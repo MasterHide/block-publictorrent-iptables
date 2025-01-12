@@ -11,12 +11,12 @@ fi
 # Step 2: Remove the uninstall_bt.sh script if it exists
 if [ -f "/root/uninstall_bt.sh" ]; then
     echo "Removing uninstall_bt.sh script..."
-    rm -f /root/uninstall_all.sh
+    rm -f /root/uninstall_bt.sh
 else
     echo "uninstall_bt.sh script not found in /root"
 fi
 
-# Step 3: Remove the 'menu' script (if it exists)
+# Step 3: Remove the 'menu' command (if it exists)
 if [ -f "/usr/local/bin/menu" ]; then
     echo "Removing menu command..."
     sudo rm -f /usr/local/bin/menu
@@ -51,4 +51,4 @@ echo -e "127.0.0.1       localhost\n::1             localhost ip6-localhost ip6-
 # sudo rm -f /path/to/other/installed/files
 
 # Step 8: Completion message
-echo "Uninstallation complete. Thank you for using the script."
+echo "Uninstallation complete. The menu interface has been removed."
