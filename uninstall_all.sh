@@ -5,7 +5,7 @@ if [ -f "/root/bt.sh" ]; then
     echo "Removing bt.sh script..."
     rm -f /root/bt.sh
 else
-    echo "bt.sh script kiyala ekk ne bn badu wda hitnn ep /root"
+    echo "bt.sh script (ehema ekk ne bn badu wda hitnn ep) /root"
 fi
 
 # Step 2: Remove the uninstall_bt.sh script if it exists
@@ -43,4 +43,4 @@ echo -e "127.0.0.1       localhost\n::1             localhost ip6-localhost ip6-
 # sudo rm -f /path/to/other/installed/files
 
 # Step 7: Completion message
-echo "Uninstallation complete bitch."
+echo "Uninstallation complete bitch love you ummwh."
