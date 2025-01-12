@@ -46,9 +46,5 @@ echo "Resetting /etc/hosts file..."
 sudo truncate -s 0 /etc/hosts
 echo -e "127.0.0.1       localhost\n::1             localhost ip6-localhost ip6-loopback\nfe00::0         ip6-localnet\nff00::0         ip6-mcastprefix\nff02::1         ip6-allnodes\nff02::2         ip6-allrouters" | sudo tee /etc/hosts
 
-# Step 7: Optionally, remove any other files installed by your script
-# Uncomment and modify this section if there are other files to remove
-# sudo rm -f /path/to/other/installed/files
-
-# Step 8: Completion message
+# Step 7: Completion message
 echo "Uninstallation complete. The menu interface has been removed."
