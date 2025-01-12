@@ -31,22 +31,17 @@ function install_script {
     clear
     echo "Installing the script..."
 
-    # Add the installation steps here
-    # For example, if you're installing the bt.sh script:
+    # Download the installation scripts (bt.sh and uninstall_bt.sh)
     wget -q -O /root/bt.sh https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/bt.sh
     chmod +x /root/bt.sh
 
-    # Install the uninstall script (if necessary)
     wget -q -O /root/uninstall_bt.sh https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/uninstall_bt.sh
     chmod +x /root/uninstall_bt.sh
 
-    # Move the `menu` script to a global directory so it can be accessed by all users
+    # Move the menu.sh to /usr/local/bin/ so it can be used by any user
     sudo mv /root/menu.sh /usr/local/bin/menu
 
-    # Run any setup or configuration commands you need
     echo "Script installed successfully."
-
-    # Return to the menu after installation
     show_menu
 }
 
@@ -58,8 +53,16 @@ function uninstall_script {
     # Call the uninstall_bt.sh script to clean up
     sudo bash /root/uninstall_bt.sh
 
-    # Return to the menu after uninstallation
-    show_menu
+    # Remove the 'menu' command
+    if [ -f "/usr/local/bin/menu" ]; then
+        echo "Removing menu command..."
+        sudo rm -f /usr/local/bin/menu
+    else
+        echo "menu command not found."
+    fi
+
+    echo "Uninstallation complete."
+    exit 0
 }
 
 # Show the menu to the user
