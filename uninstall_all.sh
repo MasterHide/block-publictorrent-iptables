@@ -43,4 +43,4 @@ echo -e "127.0.0.1       localhost\n::1             localhost ip6-localhost ip6-
 # sudo rm -f /path/to/other/installed/files
 
 # Step 7: Completion message
-echo "Uninstallation complete."
+echo "Uninstallation complete Bitch."
