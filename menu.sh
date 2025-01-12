@@ -4,7 +4,7 @@
 install_script() {
     echo "Installing bt.sh script..."
 
-    # Check if bt.sh already exists
+    # Check if bt.sh already exists in /root
     if [ -f "/root/bt.sh" ]; then
         echo "bt.sh is already installed."
     else
