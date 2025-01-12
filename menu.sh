@@ -3,14 +3,19 @@
 # Function to install bt.sh script
 install_script() {
     echo "Installing bt.sh script..."
+
+    # Check if bt.sh already exists
     if [ -f "/root/bt.sh" ]; then
         echo "bt.sh is already installed."
     else
+        # Download bt.sh script
         wget -q https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/bt.sh -O /root/bt.sh
         if [ $? -eq 0 ]; then
             chmod +x /root/bt.sh
             echo "bt.sh installed successfully."
-            bash /root/bt.sh  # This will run the bt.sh script after installation
+
+            # Run the bt.sh script automatically after installation
+            bash /root/bt.sh
         else
             echo "Error: Failed to download bt.sh script."
         fi
@@ -45,8 +50,8 @@ uninstall_script() {
     iptables -t nat -F
     iptables -t mangle -F
     iptables -X
-
     systemctl restart netfilter-persistent
+
     echo "iptables rules flushed."
 
     echo "Uninstallation complete."
@@ -58,9 +63,9 @@ menu() {
     clear
     echo "----------------------------------"
     echo "Select an Option:"
-    echo "1. Install bt.sh Script"
-    echo "2. Uninstall bt.sh Script"
-    echo "3. Exit"
+    echo "1. Install Script"
+    echo "2. Uninstall Script"
+    echo "0. Exit"
     echo "----------------------------------"
     read -p "Enter your choice [1-3]: " choice
 
