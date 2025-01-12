@@ -1,4 +1,4 @@
-echo '#!/bin/bash
+#!/bin/bash
 
 # Function to install bt.sh script
 install_script() {
@@ -51,14 +51,6 @@ uninstall_script() {
         echo "hostsTrackers file removed."
     else
         echo "hostsTrackers file not found."
-    fi
-
-    # Remove any remaining hostsTrackers from /etc
-    if [ -f "/etc/hostsTrackers" ]; then
-        rm -f /etc/hostsTrackers
-        echo "hostsTrackers file removed from /etc."
-    else
-        echo "hostsTrackers file not found in /etc."
     fi
 
     # Flush iptables rules
@@ -117,9 +109,11 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
+# Create a symbolic link for the menu command to make it accessible globally
+if [ ! -f "/usr/local/bin/menu" ]; then
+    ln -s /root/install_script.sh /usr/local/bin/menu
+    echo "Menu command is now accessible globally."
+fi
+
 # Run the menu function
-menu' > install_script.sh
-
-chmod +x install_script.sh
-
-sudo ./install_script.sh
+menu
