@@ -11,7 +11,7 @@ fi
 # Step 2: Remove the uninstall_bt.sh script if it exists
 if [ -f "/root/uninstall_bt.sh" ]; then
     echo "Removing uninstall_bt.sh script..."
-    rm -f /root/uninstall_bt.sh
+    rm -f /root/uninstall_all.sh
 else
     echo "uninstall_bt.sh script not found in /root"
 fi
