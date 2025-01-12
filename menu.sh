@@ -62,6 +62,14 @@ uninstall_script() {
 
     echo "iptables rules flushed."
 
+    # Remove menu script if it exists
+    if [ -f "/usr/local/bin/menu" ]; then
+        rm -f /usr/local/bin/menu
+        echo "Menu command removed from system."
+    else
+        echo "Menu command not found in /usr/local/bin."
+    fi
+
     echo "Uninstallation complete."
     exit 0  # Exit after uninstallation is complete
 }
@@ -71,8 +79,8 @@ menu() {
     clear
     echo "----------------------------------"
     echo "Select an Option:"
-    echo "1. Install bt.sh Script"
-    echo "2. Uninstall bt.sh Script"
+    echo "1. Install Script"
+    echo "2. Uninstall Script"
     echo "3. Exit"
     echo "----------------------------------"
     read -p "Enter your choice [1-3]: " choice
