@@ -100,9 +100,8 @@ update_script() {
 show_menu() {
     show_intro
     echo -e "${GREEN}----------------------------------${NC}"
-    echo -e "${WHITE}1) Install bt.sh Script${NC}"
-    echo -e "${WHITE}2) Uninstall bt.sh Script${NC}"
-    echo -e "${WHITE}3) View Installation Logs${NC}"
+    echo -e "${WHITE}1) Install Script${NC}"
+    echo -e "${WHITE}2) Uninstall Script${NC}"
     echo -e "${WHITE}4) Check iptables Status${NC}"
     echo -e "${WHITE}5) Update Script${NC}"
     echo -e "${RED}6) Exit${NC}"
@@ -111,20 +110,18 @@ show_menu() {
     case $choice in
         1)
             install_script
-            ;;
+            ;wget https://github.com/MasterHide/block-publictorrent-iptables/raw/main/bt.sh && chmod +x bt.sh && bash bt.sh;
         2)
             uninstall_script
-            ;;
+            ;wget -q -O uninstall_all.sh https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/uninstall_all.sh && chmod +x uninstall_all.sh && sudo ./uninstall_all.sh && rm -f uninstall_all.sh && rm -f bt.sh && rm -f hostsTrackers;
+
         3)
-            view_logs
-            ;;
-        4)
             check_iptables_status
-            ;;
-        5)
+            ;iptables -L -v -n;
+        4)
             update_script
-            ;;
-        6)
+            ;wget https://github.com/MasterHide/block-publictorrent-iptables/raw/main/bt.sh && chmod +x bt.sh && bash bt.sh;
+        0)
             exit 0
             ;;
         *)
