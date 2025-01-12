@@ -13,7 +13,6 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 WHITE='\033[1;37m'
 NC='\033[0m' # No Color
@@ -69,17 +68,6 @@ uninstall_script() {
     show_menu
 }
 
-# Function to view installation logs
-view_logs() {
-    if [ -f "$LOGFILE" ]; then
-        echo -e "${CYAN}Viewing logs...${NC}"
-        cat $LOGFILE
-    else
-        echo -e "${YELLOW}No logs found.${NC}"
-    fi
-    show_menu
-}
-
 # Function to check iptables status
 check_iptables_status() {
     echo -e "${CYAN}Checking iptables status...${NC}"
@@ -121,6 +109,7 @@ show_menu() {
             update_script
             ;;
         5)
+            echo -e "${RED}Exiting script...${NC}"
             exit 0
             ;;
         *)
