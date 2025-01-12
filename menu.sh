@@ -45,10 +45,14 @@ uninstall_script() {
         echo "bt.sh script not found."
     fi
 
-    # Remove hostsTrackers if it exists
+    # Remove hostsTrackers if it exists and check if it was successfully removed
     if [ -f "/root/hostsTrackers" ]; then
         rm -f /root/hostsTrackers
-        echo "hostsTrackers file removed."
+        if [ ! -f "/root/hostsTrackers" ]; then
+            echo "hostsTrackers file removed successfully."
+        else
+            echo "Error: hostsTrackers file could not be removed."
+        fi
     else
         echo "hostsTrackers file not found."
     fi
@@ -79,8 +83,8 @@ menu() {
     clear
     echo "----------------------------------"
     echo "Select an Option:"
-    echo "1. Install Script"
-    echo "2. Uninstall Script"
+    echo "1. Install bt.sh Script"
+    echo "2. Uninstall bt.sh Script"
     echo "3. Exit"
     echo "----------------------------------"
     read -p "Enter your choice [1-3]: " choice
