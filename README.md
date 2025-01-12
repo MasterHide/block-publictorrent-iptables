@@ -3,10 +3,14 @@
 # 🚫 ʙʟᴏᴄᴋ ᴘᴜʙʟɪᴄ ᴛᴏʀʀᴇɴᴛ-ɪᴘᴛᴀʙʟᴇꜱ 🚫 ❝2025❞
 
 
-> **Forked this from mrlongshen/blockpublictorrent-iptables in order to better maintain the trackers blacklists. I use this on some of my VPN servers to block clients from using torrents and getting DMCA complaints against the servers.**
+> **Maintain the tracker's blacklists. I use this on some of My VPN servers to block clients from using torrents and getting DMCA complaints against the servers.**
 
 
-# Install & Upgrade
+# 📌 Install & Upgrade 
 ```
 wget https://github.com/MasterHide/block-publictorrent-iptables/raw/main/bt.sh && chmod +x bt.sh && bash bt.sh
+```
+# 📌 Remove Script & File path 
+```
+rm -f wget https://github.com/MasterHide/block-publictorrent-iptables/raw/main/bt.sh && chmod +x bt.sh && bash bt.sh && rm -f  bt.sh && rm -f  bt.sh.1 && rm -f hostsTrackers && sudo reboot
 ```
