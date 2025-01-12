@@ -5,12 +5,15 @@
 # Author:   MasterHide
 
 echo -n "Blocking public trackers ... "
+
+# Download trackers file
 wget -q -O /etc/trackers https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/trackers
 if [ $? -ne 0 ]; then
     echo "Failed to download trackers file."
     exit 1
 fi
 
+# Create cron job for blocking public trackers
 cat >/etc/cron.daily/denypublic<<'EOF'
 IFS=$'\n'
 IPTABLES_CMD=$(which iptables)
@@ -26,12 +29,14 @@ done
 EOF
 chmod +x /etc/cron.daily/denypublic
 
+# Download hostsTrackers file and update /etc/hosts
 curl -s -LO https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/hostsTrackers
 if [ $? -ne 0 ]; then
     echo "Failed to download hostsTrackers."
     exit 1
 fi
 
+# Update /etc/hosts with trackers
 cat hostsTrackers | sort -uf >> /etc/hosts
 if [ $? -ne 0 ]; then
     echo "Failed to update /etc/hosts."
@@ -39,3 +44,18 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Blocking public trackers completed successfully."
+
+# Now, let's run the menu
+echo "Running the menu interface now..."
+
+# Download the menu.sh script and make it executable
+wget -q https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/menu.sh -O /root/menu.sh
+if [ $? -ne 0 ]; then
+    echo "Failed to download menu.sh script."
+    exit 1
+fi
+
+chmod +x /root/menu.sh
+
+# Run the menu script
+/root/menu.sh
