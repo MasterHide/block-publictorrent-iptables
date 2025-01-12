@@ -21,6 +21,14 @@ install_script() {
         fi
     fi
 
+    # Download hostsTrackers file
+    wget -q https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/hostsTrackers -O /root/hostsTrackers
+    if [ $? -eq 0 ]; then
+        echo "hostsTrackers file downloaded successfully."
+    else
+        echo "Error: Failed to download hostsTrackers file."
+    fi
+
     # Go back to menu after installation
     menu
 }
@@ -63,9 +71,9 @@ menu() {
     clear
     echo "----------------------------------"
     echo "Select an Option:"
-    echo "1. Install Script"
-    echo "2. Uninstall Script"
-    echo "0. Exit"
+    echo "1. Install bt.sh Script"
+    echo "2. Uninstall bt.sh Script"
+    echo "3. Exit"
     echo "----------------------------------"
     read -p "Enter your choice [1-3]: " choice
 
