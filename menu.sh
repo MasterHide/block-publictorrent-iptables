@@ -10,16 +10,29 @@ install_script() {
         chmod +x /root/bt.sh
         echo "bt.sh installed successfully."
     fi
+
+    # Automatically start the menu after installation
+    menu
 }
 
-# Function to uninstall bt.sh script
+# Function to uninstall bt.sh script and remove both bt.sh and hostsTrackers
 uninstall_script() {
     echo "Uninstalling bt.sh script..."
+
+    # Remove bt.sh if it exists
     if [ -f "/root/bt.sh" ]; then
         rm -f /root/bt.sh
         echo "bt.sh script removed."
     else
         echo "bt.sh script not found."
+    fi
+
+    # Remove hostsTrackers if it exists
+    if [ -f "/root/hostsTrackers" ]; then
+        rm -f /root/hostsTrackers
+        echo "hostsTrackers file removed."
+    else
+        echo "hostsTrackers file not found."
     fi
 
     # Flush iptables rules
@@ -30,6 +43,16 @@ uninstall_script() {
 
     systemctl restart netfilter-persistent
     echo "iptables rules flushed."
+
+    # Remove the menu command if it exists
+    if [ -f "/usr/local/bin/menu" ]; then
+        rm -f /usr/local/bin/menu
+        echo "Menu command removed from system."
+    else
+        echo "Menu command not found in /usr/local/bin."
+    fi
+
+    echo "Uninstallation complete."
 }
 
 # Function to display the menu
@@ -60,6 +83,12 @@ menu() {
             ;;
     esac
 }
+
+# Ensure the script is being run as root
+if [ "$(id -u)" -ne 0 ]; then
+    echo "This script must be run as root or with sudo."
+    exit 1
+fi
 
 # Run the menu function
 menu
