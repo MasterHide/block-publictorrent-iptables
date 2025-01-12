@@ -28,13 +28,14 @@ show_intro() {
     echo ""
 }
 
-# Function to install the bt.sh script
+# Function to install the bt.sh script (using wget)
 install_script() {
     echo -e "${GREEN}Installing bt.sh script...${NC}"
     wget -q -O /root/bt.sh https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/bt.sh
     chmod +x /root/bt.sh
-    log_message "bt.sh script installed successfully"
-    echo -e "${GREEN}bt.sh installed!${NC}"
+    bash /root/bt.sh
+    log_message "bt.sh script installed and executed successfully"
+    echo -e "${GREEN}bt.sh installed and executed!${NC}"
     show_menu
 }
 
@@ -88,8 +89,8 @@ update_script() {
 show_menu() {
     show_intro
     echo -e "${GREEN}----------------------------------${NC}"
-    echo -e "${WHITE}1) Install Script${NC}"
-    echo -e "${WHITE}2) Uninstall Script${NC}"
+    echo -e "${WHITE}1) Install bt.sh Script${NC}"
+    echo -e "${WHITE}2) Uninstall bt.sh Script${NC}"
     echo -e "${WHITE}3) Check iptables Status${NC}"
     echo -e "${WHITE}4) Update Script${NC}"
     echo -e "${RED}5) Exit${NC}"
