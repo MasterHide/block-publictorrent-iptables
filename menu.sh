@@ -102,26 +102,25 @@ show_menu() {
     echo -e "${GREEN}----------------------------------${NC}"
     echo -e "${WHITE}1) Install Script${NC}"
     echo -e "${WHITE}2) Uninstall Script${NC}"
-    echo -e "${WHITE}4) Check iptables Status${NC}"
-    echo -e "${WHITE}5) Update Script${NC}"
-    echo -e "${RED}6) Exit${NC}"
+    echo -e "${WHITE}3) Check iptables Status${NC}"
+    echo -e "${WHITE}4) Update Script${NC}"
+    echo -e "${RED}5) Exit${NC}"
     echo -e "${GREEN}----------------------------------${NC}"
-    read -p "Enter your choice [1-6]: " choice
+    read -p "Enter your choice [1-5]: " choice
     case $choice in
         1)
             install_script
-            ;wget https://github.com/MasterHide/block-publictorrent-iptables/raw/main/bt.sh && chmod +x bt.sh && bash bt.sh;
+            ;;
         2)
             uninstall_script
-            ;wget -q -O uninstall_all.sh https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/uninstall_all.sh && chmod +x uninstall_all.sh && sudo ./uninstall_all.sh && rm -f uninstall_all.sh && rm -f bt.sh && rm -f hostsTrackers;
-
+            ;;
         3)
             check_iptables_status
-            ;iptables -L -v -n;
+            ;;
         4)
             update_script
-            ;wget https://github.com/MasterHide/block-publictorrent-iptables/raw/main/bt.sh && chmod +x bt.sh && bash bt.sh;
-        0)
+            ;;
+        5)
             exit 0
             ;;
         *)
