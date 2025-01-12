@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Credit to original author: mrlongshen https://github.com/mrlongshen/blockpublictorrent-iptables
+# 2025 Updated !!
 # GitHub:   https://github.com/MasterHide/block-publictorrent-iptables
 # Author:   MasterHide
 
