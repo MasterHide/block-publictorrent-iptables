@@ -7,11 +7,16 @@ install_script() {
         echo "bt.sh is already installed."
     else
         wget -q https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/bt.sh -O /root/bt.sh
-        chmod +x /root/bt.sh
-        echo "bt.sh installed successfully."
+        if [ $? -eq 0 ]; then
+            chmod +x /root/bt.sh
+            echo "bt.sh installed successfully."
+            bash /root/bt.sh  # This will run the bt.sh script after installation
+        else
+            echo "Error: Failed to download bt.sh script."
+        fi
     fi
 
-    # Automatically start the menu after installation
+    # Go back to menu after installation
     menu
 }
 
@@ -44,15 +49,8 @@ uninstall_script() {
     systemctl restart netfilter-persistent
     echo "iptables rules flushed."
 
-    # Remove the menu command if it exists
-    if [ -f "/usr/local/bin/menu" ]; then
-        rm -f /usr/local/bin/menu
-        echo "Menu command removed from system."
-    else
-        echo "Menu command not found in /usr/local/bin."
-    fi
-
     echo "Uninstallation complete."
+    exit 0  # Exit after uninstallation is complete
 }
 
 # Function to display the menu
