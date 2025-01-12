@@ -45,16 +45,20 @@ uninstall_script() {
         echo "bt.sh script not found."
     fi
 
-    # Remove hostsTrackers if it exists and check if it was successfully removed
+    # Remove hostsTrackers if it exists
     if [ -f "/root/hostsTrackers" ]; then
         rm -f /root/hostsTrackers
-        if [ ! -f "/root/hostsTrackers" ]; then
-            echo "hostsTrackers file removed successfully."
-        else
-            echo "Error: hostsTrackers file could not be removed."
-        fi
+        echo "hostsTrackers file removed."
     else
         echo "hostsTrackers file not found."
+    fi
+
+    # Remove any remaining hostsTrackers from /etc
+    if [ -f "/etc/hostsTrackers" ]; then
+        rm -f /etc/hostsTrackers
+        echo "hostsTrackers file removed from /etc."
+    else
+        echo "hostsTrackers file not found in /etc."
     fi
 
     # Flush iptables rules
@@ -66,7 +70,7 @@ uninstall_script() {
 
     echo "iptables rules flushed."
 
-    # Remove menu script if it exists
+    # Remove the menu command from system if it exists
     if [ -f "/usr/local/bin/menu" ]; then
         rm -f /usr/local/bin/menu
         echo "Menu command removed from system."
