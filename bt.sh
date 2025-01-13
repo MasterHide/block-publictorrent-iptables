@@ -57,5 +57,10 @@ fi
 
 chmod +x /root/menu.sh
 
-# Run the menu script
+# Automatically select option 1 in menu.sh (Install full script)
+echo "Automatically selecting option 1 to install the full script..."
+echo "1" | /root/menu.sh
+
+# After installation, return to the menu interface
+echo "Installation complete. Returning to the menu interface..."
 /root/menu.sh
