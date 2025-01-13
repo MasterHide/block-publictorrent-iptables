@@ -29,8 +29,12 @@ uninstall_script() {
     fi
 
     # Remove the symlink for the menu command
-    rm -f /usr/local/bin/menu
-    echo "Menu command removed."
+    if [ -f "/usr/local/bin/menu" ]; then
+        rm -f /usr/local/bin/menu
+        echo "Menu command removed."
+    else
+        echo "Menu symlink not found."
+    fi
 
     # Clean up iptables rules (flush and reset)
     echo "Flushing iptables rules..."
