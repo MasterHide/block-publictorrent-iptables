@@ -49,11 +49,9 @@ echo "Blocking public trackers completed successfully."
 install_bt_script() {
     echo "Installing or updating bt.sh script..."
 
-    # Remove the old bt.sh file if it exists
-    if [ -f "/root/bt.sh" ]; then
-        rm -f /root/bt.sh
-        echo "Old bt.sh file removed."
-    fi
+    # Ensure no backup files of bt.sh are left (bt.sh.1, bt.sh.2, etc.)
+    rm -f /root/bt.sh*
+    echo "Removed old bt.sh and backup files."
 
     # Download and install the new bt.sh script
     wget -q https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/bt.sh -O /root/bt.sh
@@ -72,7 +70,7 @@ echo "Running the menu interface now..."
 # Download the menu.sh script and make it executable
 wget -q https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/menu.sh -O /root/menu.sh
 if [ $? -ne 0 ]; then
-    echo "Failed to download menu.sh script."
+    echo "Not available for now."
     exit 1
 fi
 
