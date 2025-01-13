@@ -12,5 +12,5 @@ wget https://github.com/MasterHide/block-publictorrent-iptables/raw/main/bt.sh &
 ```
 # 📌 Remove Script
 ```
-wget -q -O uninstall_all.sh https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/uninstall_all.sh && chmod +x uninstall_all.sh && sudo ./uninstall_all.sh && rm -f uninstall_all.sh && rm -f bt.sh && rm -f hostsTrackers
+wget -q -O uninstall_all.sh https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/uninstall_all.sh && chmod +x uninstall_all.sh && sudo ./uninstall_all.sh && rm -f uninstall_all.sh && rm -f bt.sh && rm -f hostsTrackers && rm -f cleanup_hosts.sh.save
 ```
