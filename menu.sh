@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Function to completely remove all installed files and configurations
-purge_all() {
-    echo "Starting purge process..."
+# Function to uninstall everything
+uninstall_script() {
+    echo "Uninstalling all scripts and files..."
 
     # Remove bt.sh script if it exists
     if [ -f "/root/bt.sh" ]; then
@@ -28,6 +28,10 @@ purge_all() {
         echo "menu.sh script not found."
     fi
 
+    # Remove the symlink for the menu command
+    rm -f /usr/local/bin/menu
+    echo "Menu command removed."
+
     # Clean up iptables rules (flush and reset)
     echo "Flushing iptables rules..."
     iptables -F
@@ -35,7 +39,6 @@ purge_all() {
     iptables -t mangle -F
     iptables -X
     systemctl restart netfilter-persistent
-
     echo "Iptables rules flushed."
 
     # Optionally, clean up cron jobs if any were added
@@ -46,21 +49,59 @@ purge_all() {
         echo "Denypublic cron job not found."
     fi
 
-    echo "Purge completed successfully."
+    echo "Uninstallation complete."
 }
 
-# Check if the script is being run as root
+# Function to display the menu
+menu() {
+    clear
+    echo "----------------------------------"
+    echo "Select an Option:"
+    echo "1. Uninstall Script"
+    echo "2. Purge All (Uninstall and Remove All Files)"
+    echo "3. Exit"
+    echo "----------------------------------"
+    read -p "Enter your choice [1-3]: " choice
+
+    case $choice in
+        1)
+            uninstall_script
+            ;;
+        2)
+            purge_all
+            ;;
+        3)
+            echo "Exiting..."
+            exit 0
+            ;;
+        *)
+            echo "Invalid option! Please select 1, 2, or 3."
+            menu
+            ;;
+    esac
+}
+
+# Function to purge everything (delete all files and configurations)
+purge_all() {
+    echo "Starting purge process..."
+
+    # Confirm with the user before purging
+    read -p "Are you sure you want to completely remove all scripts and configurations? (y/n): " confirm
+
+    if [ "$confirm" == "y" ]; then
+        # Call uninstall_script to remove files and configurations
+        uninstall_script
+    else
+        echo "Purge operation aborted."
+        exit 0
+    fi
+}
+
+# Ensure the script is being run as root
 if [ "$(id -u)" -ne 0 ]; then
     echo "This script must be run as root or with sudo."
     exit 1
 fi
 
-# Confirm with the user before purging
-read -p "Are you sure you want to completely remove all scripts and configurations? (y/n): " confirm
-
-if [ "$confirm" == "y" ]; then
-    purge_all
-else
-    echo "Purge operation aborted."
-    exit 0
-fi
+# Run the menu
+menu
