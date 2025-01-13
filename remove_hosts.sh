@@ -44,7 +44,8 @@ while true; do
   if [[ "$USER_ENTRY" == "done" ]]; then
     break
   fi
-  PRESERVE_ENTRIES+=("$USER_ENTRY")
+  # Trim spaces and add to the list
+  PRESERVE_ENTRIES+=("$(echo "$USER_ENTRY" | xargs)")
 done
 
 # Inform the user that a backup will be created
@@ -77,6 +78,7 @@ if [[ "$USER_CONFIRMATION" == "y" || "$USER_CONFIRMATION" == "Y" ]]; then
 
   # Loop through each entry in the PRESERVE_ENTRIES array and write it to the temporary file
   for entry in "${PRESERVE_ENTRIES[@]}"; do
+    # Use grep to find the preserved entry and append to the temporary file
     grep -F "$entry" /etc/hosts >> "$TEMP_FILE"
   done
 
