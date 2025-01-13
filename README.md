@@ -1,6 +1,6 @@
 <h1 align="center">Hi 👋, 
         
-# 🚫 ʙʟᴏᴄᴋ ᴘᴜʙʟɪᴄ ᴛᴏʀʀᴇɴᴛ🚫 ❝2025❞
+# 📌 ʙʟᴏᴄᴋ ᴘᴜʙʟɪᴄ ᴛᴏʀʀᴇɴᴛ 
 
 
 > **Maintain the tracker's blacklists. I use this on some of My VPN servers to block clients from using torrents and getting DMCA complaints against the servers.**
