@@ -73,13 +73,19 @@ if [[ "$USER_CONFIRMATION" == "y" || "$USER_CONFIRMATION" == "Y" ]]; then
     exit 1
   fi
 
+  # Clean up the /etc/hosts file by removing leading/trailing whitespace
+  # and ensure uniform formatting
+  CLEANED_HOSTS=$(cat /etc/hosts | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sort -u)
+
   # Create a unique temporary file using mktemp
   TEMP_FILE=$(mktemp /tmp/hosts_XXXXXX.tmp)
 
-  # Loop through each entry in the PRESERVE_ENTRIES array and write it to the temporary file
+  # Loop through each entry in the PRESERVE_ENTRIES array and check if it's in the cleaned /etc/hosts file
   for entry in "${PRESERVE_ENTRIES[@]}"; do
-    # Use grep to find the preserved entry and append to the temporary file
-    grep -F "$entry" /etc/hosts >> "$TEMP_FILE"
+    # Check if the preserved entry exists in the cleaned /etc/hosts
+    if echo "$CLEANED_HOSTS" | grep -qF "$entry"; then
+      echo "$entry" >> "$TEMP_FILE"
+    fi
   done
 
   # Ensure there is content before overwriting /etc/hosts
