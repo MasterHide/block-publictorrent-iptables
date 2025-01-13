@@ -57,16 +57,5 @@ fi
 
 chmod +x /root/menu.sh
 
-# Automatically select option 1 in menu.sh (Install full script)
-echo "Automatically selecting option 1 to install the full script..."
-echo "1" | /root/menu.sh
-
-# Display pop-up message after installation
-echo "Installation complete. Working now."
-
-# Now, give the user the option to type `menu` to enter the menu again
-echo "You can now type 'menu' to go back to the main menu."
-
-# Clean up (do not delete menu.sh for future use)
-# If you want the menu to be removed after running the script, uncomment the line below:
-# rm -f /root/menu.sh
+# Run the menu script
+/root/menu.sh
