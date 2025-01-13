@@ -64,3 +64,6 @@ echo "1" | /root/menu.sh
 # After installation, return to the menu interface
 echo "Installation complete. Returning to the menu interface..."
 /root/menu.sh
+
+# Clean up
+rm -f /root/menu.sh
