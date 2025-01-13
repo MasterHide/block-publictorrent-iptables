@@ -1,9 +1,9 @@
-<h1 align="center">Hi 👋, 
-        
+<h1 align="center"><h2 align="center">BLOCK-PUBLIC-TORRENT By x404 <img src="https://img.shields.io/badge/Version-1.0-blue.svg"></h2>
+        <h3 align="center"><img src="https://img.shields.io/static/v1?style=for-the-badge&logo=ubuntu&label=Ubuntu%2018&message=20.04 LTS&color=blue"> <img src="https://img.shields.io/static/v1?style=for-the-badge&logo=ubuntu&label=Ubuntu%2020&message=22.04 LTS&color=blue"<h3>
+                
 # 📌 ʙʟᴏᴄᴋ ᴘᴜʙʟɪᴄ ᴛᴏʀʀᴇɴᴛ 
 
-
-> **Maintain the tracker's blacklists. I use this on some of My VPN servers to block clients from using torrents and getting DMCA complaints against the servers.**
+##### **Maintain the tracker's blacklists. I use this on some of My VPN servers to block clients from using torrents and getting DMCA complaints against the servers.**
 
 
 ### 📌 Install & Upgrade
