@@ -8,32 +8,57 @@
 # a backup of the original file before making any changes.
 # ===========================================================
 
+# Function to print headers
+function print_header() {
+  echo -e "\033[1;34m$1\033[0m"
+}
+
+# Function to print messages in green
+function print_success() {
+  echo -e "\033[1;32m$1\033[0m"
+}
+
+# Function to print messages in red
+function print_error() {
+  echo -e "\033[1;31m$1\033[0m"
+}
+
 # Display a friendly welcome message
-echo "Welcome to the /etc/hosts cleanup script!"
+print_header "Welcome to the /etc/hosts Cleanup Script"
+echo "--------------------------------------------------"
 echo "This script will allow you to choose which entries you want to preserve in /etc/hosts."
+echo "--------------------------------------------------"
 
 # Check if we are running as root (necessary for modifying /etc/hosts)
 if [ "$(id -u)" -ne 0 ]; then
-  echo "Error: This script must be run as root (use sudo)."
+  print_error "Error: This script must be run as root (use sudo)."
   exit 1
 fi
 
 # Ask if the user wants to preview the current /etc/hosts file
+print_header "Step 1: Preview the current /etc/hosts file"
+echo "--------------------------------------------------"
 echo "Do you want to view the current contents of /etc/hosts before proceeding? (y/n)"
 read -r USER_CHOICE
 
 if [[ "$USER_CHOICE" == "y" || "$USER_CHOICE" == "Y" ]]; then
-  echo "Here are the current entries in /etc/hosts:"
+  print_header "Current /etc/hosts File"
   cat /etc/hosts
-  echo "========================================="
+  echo "--------------------------------------------------"
   echo "You can now review the file before continuing."
-  echo "========================================="
+  echo "--------------------------------------------------"
 fi
 
+# Count the number of lines (hosts) in /etc/hosts
+ORIGINAL_COUNT=$(wc -l < /etc/hosts)
+print_success "The current /etc/hosts file contains $ORIGINAL_COUNT entries."
+
 # Ask the user for the host entries they want to preserve
+print_header "Step 2: Specify Entries to Preserve"
+echo "--------------------------------------------------"
 echo "Please enter the exact host entries you want to keep (separate multiple entries with spaces or new lines)."
-echo "For example: '127.0.1.1 example1 example2'"
-echo "After entering the entries, type 'done' to finish."
+echo "Example: '127.0.1.1 example1 example2'"
+echo "When you're done, type 'done' and press Enter."
 
 # Initialize an empty array to store the preserved entries
 PRESERVE_ENTRIES=()
@@ -49,6 +74,8 @@ while true; do
 done
 
 # Inform the user that a backup will be created
+print_header "Step 3: Backup and Proceed"
+echo "--------------------------------------------------"
 echo "A backup of /etc/hosts will be created before making any changes."
 echo "The following entries will be preserved:"
 
@@ -58,18 +85,19 @@ for entry in "${PRESERVE_ENTRIES[@]}"; do
 done
 
 # Confirm whether the user wants to continue
+echo "--------------------------------------------------"
 echo "Are you sure you want to continue and remove all other entries? (y/n)"
 read -r USER_CONFIRMATION
 
 # If user confirms, proceed with the operation
 if [[ "$USER_CONFIRMATION" == "y" || "$USER_CONFIRMATION" == "Y" ]]; then
-  echo "Proceeding with cleanup..."
+  print_success "Proceeding with cleanup..."
 
   # Create a backup of the original /etc/hosts file with a timestamp
   BACKUP_FILE="/etc/hosts.bak_$(date +'%Y%m%d%H%M%S')"
-  echo "Creating a backup of /etc/hosts as $BACKUP_FILE..."
+  print_success "Creating a backup of /etc/hosts as $BACKUP_FILE..."
   if ! cp /etc/hosts "$BACKUP_FILE"; then
-    echo "Error: Failed to create backup."
+    print_error "Error: Failed to create backup."
     exit 1
   fi
 
@@ -92,7 +120,7 @@ if [[ "$USER_CONFIRMATION" == "y" || "$USER_CONFIRMATION" == "Y" ]]; then
   if [ -s "$TEMP_FILE" ]; then
     cat "$TEMP_FILE" > /etc/hosts
   else
-    echo "Error: No valid entries to write to /etc/hosts. Aborting operation."
+    print_error "Error: No valid entries to write to /etc/hosts. Aborting operation."
     rm "$TEMP_FILE"
     exit 1
   fi
@@ -100,12 +128,21 @@ if [[ "$USER_CONFIRMATION" == "y" || "$USER_CONFIRMATION" == "Y" ]]; then
   # Clean up the temporary file
   rm "$TEMP_FILE"
 
+  # Count the number of lines after modification
+  FINAL_COUNT=$(wc -l < /etc/hosts)
+  print_success "The /etc/hosts file now contains $FINAL_COUNT entries."
+
+  # Check if the count of entries has changed
+  if [ "$FINAL_COUNT" -eq "$ORIGINAL_COUNT" ]; then
+    print_success "No entries were removed. The file has the same number of entries as before."
+  else
+    print_success "The file has been updated. Entries were removed and/or added."
+  fi
+
   # Inform the user that the operation is complete
-  echo "The specified entries have been kept, and all other entries have been removed from /etc/hosts."
-  echo "Backup of the original /etc/hosts file is saved as $BACKUP_FILE."
+  print_success "The specified entries have been kept, and all other entries have been removed from /etc/hosts."
+  print_success "Backup of the original /etc/hosts file is saved as $BACKUP_FILE."
 
 else
   # If user does not confirm, exit the script
-  echo "Operation cancelled. No changes were made."
-  exit 0
-fi
+  print_error "Operation cancelled. No changes we
