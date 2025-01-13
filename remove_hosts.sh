@@ -10,14 +10,7 @@
 
 # Display a friendly welcome message
 echo "Welcome to the /etc/hosts cleanup script!"
-echo "This script will keep only the entries you specify and remove all others."
-
-# Define the entries you want to keep (add as many entries as needed)
-PRESERVE_ENTRIES=(
-  "127.0.1.1       exsample-01       exsample-02"
-  "127.0.0.1       mysite.local"
-  "192.168.1.10    myserver"
-)
+echo "This script will allow you to choose which entries you want to preserve in /etc/hosts."
 
 # Check if we are running as root (necessary for modifying /etc/hosts)
 if [ "$(id -u)" -ne 0 ]; then
@@ -37,6 +30,23 @@ if [[ "$USER_CHOICE" == "y" || "$USER_CHOICE" == "Y" ]]; then
   echo "========================================="
 fi
 
+# Ask the user for the host entries they want to preserve
+echo "Please enter the exact host entries you want to keep (separate multiple entries with spaces or new lines)."
+echo "For example: '127.0.1.1 example1 example2'"
+echo "After entering the entries, type 'done' to finish."
+
+# Initialize an empty array to store the preserved entries
+PRESERVE_ENTRIES=()
+
+# Read user input for entries they want to keep
+while true; do
+  read -r USER_ENTRY
+  if [[ "$USER_ENTRY" == "done" ]]; then
+    break
+  fi
+  PRESERVE_ENTRIES+=("$USER_ENTRY")
+done
+
 # Inform the user that a backup will be created
 echo "A backup of /etc/hosts will be created before making any changes."
 echo "The following entries will be preserved:"
@@ -46,6 +56,7 @@ for entry in "${PRESERVE_ENTRIES[@]}"; do
   echo "$entry"
 done
 
+# Confirm whether the user wants to continue
 echo "Are you sure you want to continue and remove all other entries? (y/n)"
 read -r USER_CONFIRMATION
 
@@ -64,8 +75,7 @@ if [[ "$USER_CONFIRMATION" == "y" || "$USER_CONFIRMATION" == "Y" ]]; then
   # Create a unique temporary file using mktemp
   TEMP_FILE=$(mktemp /tmp/hosts_XXXXXX.tmp)
 
-  # Remove all lines except the ones we want to preserve
-  # Loop through each entry in the PRESERVE_ENTRIES array
+  # Loop through each entry in the PRESERVE_ENTRIES array and write it to the temporary file
   for entry in "${PRESERVE_ENTRIES[@]}"; do
     grep -F "$entry" /etc/hosts >> "$TEMP_FILE"
   done
