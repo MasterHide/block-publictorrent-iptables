@@ -25,6 +25,18 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
+# Ask if the user wants to preview the current /etc/hosts file
+echo "Do you want to view the current contents of /etc/hosts before proceeding? (y/n)"
+read -r USER_CHOICE
+
+if [[ "$USER_CHOICE" == "y" || "$USER_CHOICE" == "Y" ]]; then
+  echo "Here are the current entries in /etc/hosts:"
+  cat /etc/hosts
+  echo "========================================="
+  echo "You can now review the file before continuing."
+  echo "========================================="
+fi
+
 # Inform the user that a backup will be created
 echo "A backup of /etc/hosts will be created before making any changes."
 echo "The following entries will be preserved:"
