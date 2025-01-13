@@ -12,7 +12,9 @@ wget https://github.com/MasterHide/block-publictorrent-iptables/raw/main/bt.sh &
 ```
 
 ### 📌 /etc/hosts Cleanup
-```sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/cleanup_hosts.sh)"```
+```
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/cleanup_hosts.sh)"
+```
 
 
 ### 📌 Remove Script
