@@ -73,6 +73,12 @@ while true; do
   PRESERVE_ENTRIES+=("$(echo "$USER_ENTRY" | xargs)")
 done
 
+# Ensure that the array is not empty before proceeding
+if [ ${#PRESERVE_ENTRIES[@]} -eq 0 ]; then
+  print_error "Error: No entries to preserve were entered. Aborting operation."
+  exit 1
+fi
+
 # Inform the user that a backup will be created
 print_header "Step 3: Backup and Proceed"
 echo "--------------------------------------------------"
@@ -145,4 +151,6 @@ if [[ "$USER_CONFIRMATION" == "y" || "$USER_CONFIRMATION" == "Y" ]]; then
 
 else
   # If user does not confirm, exit the script
-  print_error "Operation cancelled. No changes we
+  print_error "Operation cancelled. No changes were made."
+  exit 0
+fi
