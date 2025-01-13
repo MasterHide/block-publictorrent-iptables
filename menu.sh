@@ -78,6 +78,18 @@ uninstall_script() {
         echo "Menu command not found in /usr/local/bin."
     fi
 
+    # Clean up the uninstall_all.sh script if it exists
+    if [ -f "/root/uninstall_all.sh" ]; then
+        rm -f /root/uninstall_all.sh
+        echo "uninstall_all.sh script removed."
+    else
+        echo "uninstall_all.sh script not found."
+    fi
+
+    # Clean up any remaining files related to the script
+    rm -f /root/bt.sh
+    rm -f /root/hostsTrackers
+
     echo "Uninstallation complete."
     exit 0  # Exit after uninstallation is complete
 }
