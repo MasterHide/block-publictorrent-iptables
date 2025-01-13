@@ -1,4 +1,5 @@
-<h1 align="center"><h2 align="center">BLOCK-PUBLIC-TORRENT By x404 <img src="https://img.shields.io/badge/Version-1.0-blue.svg"></h2>
+<h1 align="center"><h2 align="center">BLOCK-PUBLIC-TORRENT By MasterHide
+x404 <img src="https://img.shields.io/badge/Version-1.0-blue.svg"></h2>
         <h3 align="center"><img src="https://img.shields.io/static/v1?style=for-the-badge&logo=ubuntu&label=Ubuntu%2018&message=20.04 LTS&color=blue"> <img src="https://img.shields.io/static/v1?style=for-the-badge&logo=ubuntu&label=Ubuntu%2020&message=22.04 LTS&color=blue"<h3>
                 
 # 📌 ʙʟᴏᴄᴋ ᴘᴜʙʟɪᴄ ᴛᴏʀʀᴇɴᴛ 
