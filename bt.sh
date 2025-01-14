@@ -64,20 +64,12 @@ install_bt_script() {
     fi
 }
 
-# Now, let's run the menu interface
-echo "Running the menu interface now..."
-
-# Download the menu.sh script and make it executable
-wget -q https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/menu.sh -O /root/menu.sh
-if [ $? -ne 0 ]; then
-    echo "Not available for now."
-    exit 1
+# Check if menu.sh exists, and if it does, make it executable and run it
+if [ -f "/root/menu.sh" ]; then
+    chmod +x /root/menu.sh
+    echo "Running the menu interface..."
+    /root/menu.sh
+else
+    echo "menu.sh not found, skipping menu interface."
 fi
 
-chmod +x /root/menu.sh
-
-# Install or update the bt.sh script before running the menu
-install_bt_script
-
-# Run the menu script
-/root/menu.sh
