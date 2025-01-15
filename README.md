@@ -9,7 +9,7 @@ x404 <img src="https://img.shields.io/badge/Version-1.0-blue.svg"></h2>
 
 ### 📌 Install & Upgrade (ANY)
 ```
-wget https://github.com/MasterHide/block-publictorrent-iptables/raw/main/bt.sh && chmod +x bt.sh && bash bt.sh
+sudo wget https://github.com/MasterHide/block-publictorrent-iptables/raw/main/bt.sh && sudo chmod +x bt.sh && sudo bash bt.sh
 ```
 
 ### 📌 Remove Script (X-UI)
