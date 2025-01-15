@@ -64,12 +64,11 @@ install_bt_script() {
     fi
 }
 
-# Check if menu.sh exists, and if it does, make it executable and run it
-if [ -f "/root/menu.sh" ]; then
-    chmod +x /root/menu.sh
+# Check if bmenu.sh exists, and if it does, make it executable and run it
+if [ -f "/root/bmenu.sh" ]; then
+    chmod +x /root/bmenu.sh
     echo "Running the menu interface..."
-    /root/menu.sh
+    /root/bmenu.sh
 else
-    echo "menu.sh not found, skipping menu interface."
+    echo "bmenu.sh not found, skipping menu interface."
 fi
-
