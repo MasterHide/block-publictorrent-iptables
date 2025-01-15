@@ -33,9 +33,9 @@ fi
 
 # Define paths for multi-location installation
 INSTALL_PATHS=(
-    "/home/ubuntu/block-publictorrent-iptables"
-    "/root/block-publictorrent-iptables"
-    "/opt/hiddify-manager/block-publictorrent-iptables"
+    "/home/ubuntu"
+    "/root"
+    "/opt/hiddify-manager"
 )
 
 # Ensure all directories exist
