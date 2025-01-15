@@ -61,11 +61,12 @@ add_single_host() {
         echo "$host_or_ip" | sudo tee -a "$HOSTS_TRACKERS_FILE" > /dev/null
     fi
 
-    # Block each resolved IP
+    # Block each resolved IP in both default and Docker chains
     for ip in $ips; do
         sudo iptables -A INPUT -d "$ip" -j DROP
         sudo iptables -A FORWARD -d "$ip" -j DROP
         sudo iptables -A OUTPUT -d "$ip" -j DROP
+        sudo iptables -I DOCKER-USER -d "$ip" -j DROP
         sudo iptables -L -n | grep "$ip" && print_success "Rule applied for $ip" || print_error "Failed to apply rule for $ip"
     done
 
@@ -102,11 +103,12 @@ add_multiple_hosts() {
             echo "$host_or_ip" | sudo tee -a "$HOSTS_TRACKERS_FILE" > /dev/null
         fi
 
-        # Block each resolved IP
+        # Block each resolved IP in both default and Docker chains
         for ip in $ips; do
             sudo iptables -A INPUT -d "$ip" -j DROP
             sudo iptables -A FORWARD -d "$ip" -j DROP
             sudo iptables -A OUTPUT -d "$ip" -j DROP
+            sudo iptables -I DOCKER-USER -d "$ip" -j DROP
             sudo iptables -L -n | grep "$ip" && print_success "Rule applied for $ip" || print_error "Failed to apply rule for $ip"
         done
     done
@@ -149,11 +151,12 @@ remove_host() {
         sudo sed -i "/$hostname/d" "$HOSTS_TRACKERS_FILE"
     fi
 
-    # Remove iptables rules for each resolved IP
+    # Remove iptables rules for each resolved IP from both default and Docker chains
     for ip in $ips; do
         sudo iptables -D INPUT -d "$ip" -j DROP
         sudo iptables -D FORWARD -d "$ip" -j DROP
         sudo iptables -D OUTPUT -d "$ip" -j DROP
+        sudo iptables -D DOCKER-USER -d "$ip" -j DROP
         print_success "Removed rule for IP: $ip"
     done
 
