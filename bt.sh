@@ -95,9 +95,10 @@ print_success "Blocking public trackers setup completed successfully."
 
 # Automatically run bmenu.sh from any valid path
 for path in "${INSTALL_PATHS[@]}"; do
-    local bmenu_path="$path/bmenu.sh"
+    bmenu_path="$path/bmenu.sh"
     if [ -f "$bmenu_path" ]; then
         print_success "Starting menu interface from $bmenu_path..."
+        chmod +x "$bmenu_path"
         "$bmenu_path"
         exit 0
     fi
