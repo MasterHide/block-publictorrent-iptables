@@ -108,36 +108,14 @@ uninstall_all() {
     # Return to the menu (don't exit)
 }
 
-# Cleanup /etc/hosts and remove unnecessary files from /root and /home/ubuntu
+# Option 4: Use the external cleanup script to handle cleanup
 cleanup_files() {
-    echo "Cleaning up files and /etc/hosts..."
+    echo "Running external cleanup script for /etc/hosts and removing unnecessary files..."
+    
+    # Use the external cleanup script you mentioned
+    sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/cleanup_hosts.sh)"
 
-    # Backup the /etc/hosts file before modifying it
-    echo "Backing up /etc/hosts to /etc/hosts.bak..."
-    sudo cp /etc/hosts /etc/hosts.bak
-
-    # Remove lines containing 'trackers', 'ads', and 'hostsTrackers' in /etc/hosts
-    echo "Cleaning up /etc/hosts..."
-    sudo sed -i '/trackers/d' /etc/hosts
-    sudo sed -i '/ads/d' /etc/hosts
-    sudo sed -i '/hostsTrackers/d' /etc/hosts
-
-    # Remove the `hostsTrackers` file from both /root and /home/ubuntu
-    if [ -f "/root/hostsTrackers" ]; then
-        sudo rm -f /root/hostsTrackers
-        echo "Removed /root/hostsTrackers"
-    else
-        echo "File /root/hostsTrackers not found"
-    fi
-
-    if [ -f "/home/ubuntu/hostsTrackers" ]; then
-        sudo rm -f /home/ubuntu/hostsTrackers
-        echo "Removed /home/ubuntu/hostsTrackers"
-    else
-        echo "File /home/ubuntu/hostsTrackers not found"
-    fi
-
-    print_success "File cleanup and /etc/hosts modification completed."
+    print_success "Cleanup completed using the external script."
 }
 
 # Display the menu
@@ -173,7 +151,7 @@ while true; do
             read -n 1
             ;;
         4)
-            cleanup_files  # Run cleanup files and /etc/hosts cleanup
+            cleanup_files  # Use the external cleanup script
             ;;
         5)
             print_header "Installing or updating bt.sh script..."
