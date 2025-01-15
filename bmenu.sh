@@ -37,23 +37,28 @@ print_error() {
     echo -e "${COLOR_ERROR}$1${COLOR_RESET}"
 }
 
-# Add host
-add_host() {
-    echo -n -e "${COLOR_INPUT}Enter the hostname to add: ${COLOR_RESET}"
-    read hostname
+# Add single host or IP
+add_single_host() {
+    echo -n -e "${COLOR_INPUT}Enter the hostname or IP to add: ${COLOR_RESET}"
+    read host_or_ip
 
-    # Resolve hostname to IP(s)
-    ips=$(getent ahosts "$hostname" | awk '{print $1}' | sort -u)
+    # If the input is a valid IP, process it directly
+    if [[ "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        ips=$host_or_ip
+    else
+        # Resolve hostname to IP(s)
+        ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
+    fi
 
     if [ -z "$ips" ]; then
-        print_error "Failed to resolve $hostname to any IP address. Exiting."
+        print_error "Failed to resolve $host_or_ip to any IP address. Exiting."
         return
     fi
 
-    # Add hostname to tracker files
-    if ! grep -q "$hostname" "$TRACKERS_FILE" && ! grep -q "$hostname" "$HOSTS_TRACKERS_FILE"; then
-        echo "$hostname" | sudo tee -a "$TRACKERS_FILE" > /dev/null
-        echo "$hostname" | sudo tee -a "$HOSTS_TRACKERS_FILE" > /dev/null
+    # Add hostname or IP to tracker files
+    if ! grep -q "$host_or_ip" "$TRACKERS_FILE" && ! grep -q "$host_or_ip" "$HOSTS_TRACKERS_FILE"; then
+        echo "$host_or_ip" | sudo tee -a "$TRACKERS_FILE" > /dev/null
+        echo "$host_or_ip" | sudo tee -a "$HOSTS_TRACKERS_FILE" > /dev/null
     fi
 
     # Block each resolved IP
@@ -64,7 +69,71 @@ add_host() {
         sudo iptables -L -n | grep "$ip" && print_success "Rule applied for $ip" || print_error "Failed to apply rule for $ip"
     done
 
-    print_success "Host $hostname and its IP(s) blocked successfully!"
+    print_success "Host or IP $host_or_ip and its IP(s) blocked successfully!"
+}
+
+# Add multiple hosts or IPs
+add_multiple_hosts() {
+    echo -e "${COLOR_INPUT}Enter multiple hostnames or IPs, one per line. Press Enter on an empty line to finish:${COLOR_RESET}"
+    hosts_or_ips=()
+    while true; do
+        read host_or_ip
+        [ -z "$host_or_ip" ] && break
+        hosts_or_ips+=("$host_or_ip")
+    done
+
+    for host_or_ip in "${hosts_or_ips[@]}"; do
+        # If the input is a valid IP, process it directly
+        if [[ "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            ips=$host_or_ip
+        else
+            # Resolve hostname to IP(s)
+            ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
+        fi
+
+        if [ -z "$ips" ]; then
+            print_error "Failed to resolve $host_or_ip to any IP address. Skipping."
+            continue
+        fi
+
+        # Add hostname or IP to tracker files
+        if ! grep -q "$host_or_ip" "$TRACKERS_FILE" && ! grep -q "$host_or_ip" "$HOSTS_TRACKERS_FILE"; then
+            echo "$host_or_ip" | sudo tee -a "$TRACKERS_FILE" > /dev/null
+            echo "$host_or_ip" | sudo tee -a "$HOSTS_TRACKERS_FILE" > /dev/null
+        fi
+
+        # Block each resolved IP
+        for ip in $ips; do
+            sudo iptables -A INPUT -d "$ip" -j DROP
+            sudo iptables -A FORWARD -d "$ip" -j DROP
+            sudo iptables -A OUTPUT -d "$ip" -j DROP
+            sudo iptables -L -n | grep "$ip" && print_success "Rule applied for $ip" || print_error "Failed to apply rule for $ip"
+        done
+    done
+
+    print_success "All specified hosts and IPs have been blocked successfully!"
+}
+
+# Add host menu
+add_host_menu() {
+    echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
+    echo -e "${COLOR_MENU}1. Block Single Domain/IP${COLOR_RESET}"
+    echo -e "${COLOR_MENU}2. Block Multiple Domains/IPs${COLOR_RESET}"
+    echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
+    echo -n -e "${COLOR_INPUT}Select an option [1-2]: ${COLOR_RESET}"
+    read sub_option
+
+    case $sub_option in
+        1)
+            add_single_host
+            ;;
+        2)
+            add_multiple_hosts
+            ;;
+        *)
+            print_error "Invalid option, returning to the main menu."
+            ;;
+    esac
 }
 
 # Remove host
@@ -91,64 +160,6 @@ remove_host() {
     print_success "Host $hostname removed successfully."
 }
 
-# Uninstall and clean up all files (using predefined paths, no dynamic search)
-uninstall_all() {
-    print_header "Uninstalling all and cleaning up..."
-
-    # List of files to remove from /root
-    files_to_remove_root=(
-        "/root/bmenu.sh"
-        "/root/uninstall_all.sh"
-        "/root/bt.sh"
-        "/root/hostsTrackers"
-        "/root/cleanup_hosts.sh.save"
-        "/root/trackers"
-    )
-
-    # List of files to remove from /home/ubuntu
-    files_to_remove_home_ubuntu=(
-        "/home/ubuntu/bmenu.sh"
-        "/home/ubuntu/uninstall_all.sh"
-        "/home/ubuntu/bt.sh"
-        "/home/ubuntu/hostsTrackers"
-        "/home/ubuntu/cleanup_hosts.sh.save"
-        "/home/ubuntu/trackers"
-    )
-
-    # Remove files from /root
-    for file in "${files_to_remove_root[@]}"; do
-        if [ -f "$file" ]; then
-            sudo rm -f "$file"
-            echo -e "${COLOR_SUCCESS}Removed from /root: $file${COLOR_RESET}"
-        else
-            echo -e "${COLOR_WARNING}File not found in /root: $file${COLOR_RESET}"
-        fi
-    done
-
-    # Remove files from /home/ubuntu
-    for file in "${files_to_remove_home_ubuntu[@]}"; do
-        if [ -f "$file" ]; then
-            sudo rm -f "$file"
-            echo -e "${COLOR_SUCCESS}Removed from /home/ubuntu: $file${COLOR_RESET}"
-        else
-            echo -e "${COLOR_WARNING}File not found in /home/ubuntu: $file${COLOR_RESET}"
-        fi
-    done
-
-    print_success "All specified files have been processed and removed."
-    # Return to the menu (don't exit)
-}
-
-# Option 4: Use the external cleanup script to handle cleanup
-cleanup_files() {
-    print_header "Running external cleanup script for /etc/hosts and removing unnecessary files..."
-
-    # Use the external cleanup script you mentioned
-    sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/cleanup_hosts.sh)"
-
-    print_success "Cleanup completed using the external script."
-}
-
 # Display the menu with color improvements
 while true; do
     clear
@@ -168,7 +179,7 @@ while true; do
 
     case $option in
         1)
-            add_host
+            add_host_menu
             ;;
         2)
             remove_host
@@ -182,7 +193,9 @@ while true; do
             read -n 1
             ;;
         4)
-            cleanup_files  # Use the external cleanup script
+            print_header "Running cleanup script..."
+            sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/cleanup_hosts.sh)"
+            print_success "Cleanup completed."
             ;;
         5)
             print_header "Installing or updating bmenu.sh script..."
@@ -195,8 +208,8 @@ while true; do
             fi
             ;;
         6)
-            uninstall_all  # Call the uninstall function
-            # Stay in the menu after uninstallation, don't exit
+            print_header "Uninstalling and resetting system..."
+            sudo bash "$BMENU_PATH" uninstall_all
             ;;
         7)
             print_success "Exiting. Goodbye Adarei umma!"
