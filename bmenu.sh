@@ -105,8 +105,71 @@ uninstall_all() {
     done
 
     print_success "All specified files have been processed and removed."
+    # Return to the menu (don't exit)
+}
 
-    # Return to the menu
+# Cleanup /etc/hosts and remove unnecessary files from /root and /home/ubuntu
+cleanup_files() {
+    echo "Cleaning up files and /etc/hosts..."
+
+    # Display the current contents of /etc/hosts before modifying
+    echo "Current contents of /etc/hosts:"
+    cat /etc/hosts
+    echo "------------------------------------------"
+
+    # Backup the /etc/hosts file before modifying it
+    echo "Backing up /etc/hosts to /etc/hosts.bak..."
+    sudo cp /etc/hosts /etc/hosts.bak
+
+    # Remove lines containing 'trackers', 'ads', and 'hostsTrackers' in /etc/hosts
+    echo "Cleaning up /etc/hosts..."
+    sudo sed -i '/trackers/d' /etc/hosts
+    sudo sed -i '/ads/d' /etc/hosts
+    sudo sed -i '/hostsTrackers/d' /etc/hosts
+
+    # List of files to remove from /root
+    files_to_remove_root=(
+        "/root/bmenu.sh"
+        "/root/uninstall_all.sh"
+        "/root/bt.sh"
+        "/root/hostsTrackers"
+        "/root/cleanup_hosts.sh.save"
+        "/root/trackers"
+        "/root/hostsTrackers"
+    )
+
+    # List of files to remove from /home/ubuntu
+    files_to_remove_home_ubuntu=(
+        "/home/ubuntu/bmenu.sh"
+        "/home/ubuntu/uninstall_all.sh"
+        "/home/ubuntu/bt.sh"
+        "/home/ubuntu/hostsTrackers"
+        "/home/ubuntu/cleanup_hosts.sh.save"
+        "/home/ubuntu/trackers"
+        "/home/ubuntu/hostsTrackers"
+    )
+
+    # Remove files from /root
+    for file in "${files_to_remove_root[@]}"; do
+        if [ -f "$file" ]; then
+            sudo rm -f "$file"
+            echo "Removed from /root: $file"
+        else
+            echo "File not found in /root: $file"
+        fi
+    done
+
+    # Remove files from /home/ubuntu
+    for file in "${files_to_remove_home_ubuntu[@]}"; do
+        if [ -f "$file" ]; then
+            sudo rm -f "$file"
+            echo "Removed from /home/ubuntu: $file"
+        else
+            echo "File not found in /home/ubuntu: $file"
+        fi
+    done
+
+    print_success "All specified files have been processed and removed."
 }
 
 # Display the menu
@@ -118,7 +181,7 @@ while true; do
     echo "1. Add a new host to block"
     echo "2. Remove a host from the blocklist"
     echo "3. View current blocked hosts"
-    echo "4. Clean up hosts file list"
+    echo "4. Clean up hosts file list and remove unnecessary files"
     echo "5. Install or Update"
     echo "6. Uninstall all and reset system"
     echo "7. Exit"
@@ -142,8 +205,7 @@ while true; do
             read -n 1
             ;;
         4)
-            print_header "Cleaning up /etc/hosts file..."
-            sudo /root/cleanup_hosts.sh  # Ensure cleanup script works
+            cleanup_files  # Run cleanup files and /etc/hosts cleanup
             ;;
         5)
             print_header "Installing or updating bt.sh script..."
