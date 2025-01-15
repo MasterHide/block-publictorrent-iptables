@@ -99,18 +99,35 @@ install_bt_script() {
 download_and_run_bmenu() {
     print_warning "Downloading bmenu.sh..."
 
-    # Try downloading bmenu.sh in both /home/ubuntu/ and /root/
-    download_file "https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/bmenu.sh" "/home/ubuntu/bmenu.sh" || download_file "https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/bmenu.sh" "/root/bmenu.sh" || exit 1
+    # Set download paths and URLs
+    local download_path_ubuntu="/home/ubuntu/bmenu.sh"
+    local download_path_root="/root/bmenu.sh"
+    local download_path_hiddify="/opt/hiddify-manager/bmenu.sh"
+    local url="https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/bmenu.sh"
+
+    # Try downloading bmenu.sh to /home/ubuntu/, /root/, and /opt/hiddify-manager/
+    if ! download_file "$url" "$download_path_ubuntu"; then
+        print_warning "Failed to download to /home/ubuntu, trying /root/..."
+        if ! download_file "$url" "$download_path_root"; then
+            print_warning "Failed to download to /root, trying /opt/hiddify-manager/..."
+            if ! download_file "$url" "$download_path_hiddify"; then
+                print_error "Failed to download bmenu.sh to all locations. Exiting."
+                exit 1
+            fi
+        fi
+    fi
 
     # Make bmenu.sh executable
-    chmod +x /home/ubuntu/bmenu.sh || chmod +x /root/bmenu.sh
+    chmod +x "$download_path_ubuntu" || chmod +x "$download_path_root" || chmod +x "$download_path_hiddify"
 
     # Run bmenu.sh (start the menu interface)
-    echo "Starting menu interface..."
-    if [ -f /home/ubuntu/bmenu.sh ]; then
-        /home/ubuntu/bmenu.sh
+    print_success "Starting menu interface..."
+    if [ -f "$download_path_ubuntu" ]; then
+        $download_path_ubuntu
+    elif [ -f "$download_path_root" ]; then
+        $download_path_root
     else
-        /root/bmenu.sh
+        $download_path_hiddify
     fi
 }
 
