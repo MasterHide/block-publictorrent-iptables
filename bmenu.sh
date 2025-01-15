@@ -10,6 +10,8 @@ fi
 TRACKERS_FILE="/etc/trackers"
 HOSTS_TRACKERS_FILE="/etc/hostsTrackers"
 HOSTS_FILE="/etc/hosts"
+HIDDIFY_PATH="/opt/hiddify-manager"
+BMENU_PATH="$HIDDIFY_PATH/bmenu.sh"
 
 # Color definitions for better UI/UX
 COLOR_HEADER="\033[1;34m"
@@ -161,8 +163,14 @@ while true; do
             cleanup_files  # Use the external cleanup script
             ;;
         5)
-            print_header "Installing or updating bt.sh script..."
-            sudo /root/bt.sh
+            print_header "Installing or updating bmenu.sh script..."
+            if [ -f "$BMENU_PATH" ]; then
+                print_success "$BMENU_PATH already exists."
+            else
+                sudo wget -O "$BMENU_PATH" https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/bmenu.sh
+                sudo chmod +x "$BMENU_PATH"
+                print_success "bmenu.sh script installed/updated at $BMENU_PATH."
+            fi
             ;;
         6)
             uninstall_all  # Call the uninstall function
