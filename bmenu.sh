@@ -58,54 +58,19 @@ remove_host() {
     fi
 }
 
-# Uninstall and clean up all files dynamically
+# Uninstall and clean up all files (using predefined paths, no dynamic search)
 uninstall_all() {
     echo "Uninstalling all and cleaning up..."
 
-    # Dynamically find files to remove
-    BMENU_PATH=$(find / -type f -name "bmenu.sh" 2>/dev/null)
-    BT_PATH=$(find / -type f -name "bt.sh" 2>/dev/null)
-    HOSTS_TRACKERS_PATH=$(find / -type f -name "hostsTrackers" 2>/dev/null)
-    CLEANUP_PATH=$(find / -type f -name "cleanup_hosts.sh.save" 2>/dev/null)
-    UNINSTALL_PATH=$(find / -type f -name "uninstall_all.sh" 2>/dev/null)
+    # Remove predefined files
+    sudo rm -f /root/bmenu.sh
+    sudo rm -f /root/uninstall_all.sh
+    sudo rm -f /root/bt.sh
+    sudo rm -f /root/hostsTrackers
+    sudo rm -f /root/cleanup_hosts.sh.save
 
-    # Remove the files if found
-    if [ -n "$BMENU_PATH" ]; then
-        sudo rm -f "$BMENU_PATH"
-        print_success "Removed bmenu.sh"
-    else
-        print_error "bmenu.sh not found."
-    fi
+    print_success "All files have been removed successfully."
 
-    if [ -n "$BT_PATH" ]; then
-        sudo rm -f "$BT_PATH"
-        print_success "Removed bt.sh"
-    else
-        print_error "bt.sh not found."
-    fi
-
-    if [ -n "$HOSTS_TRACKERS_PATH" ]; then
-        sudo rm -f "$HOSTS_TRACKERS_PATH"
-        print_success "Removed hostsTrackers"
-    else
-        print_error "hostsTrackers not found."
-    fi
-
-    if [ -n "$CLEANUP_PATH" ]; then
-        sudo rm -f "$CLEANUP_PATH"
-        print_success "Removed cleanup_hosts.sh.save"
-    else
-        print_error "cleanup_hosts.sh.save not found."
-    fi
-
-    if [ -n "$UNINSTALL_PATH" ]; then
-        sudo rm -f "$UNINSTALL_PATH"
-        print_success "Removed uninstall_all.sh"
-    else
-        print_error "uninstall_all.sh not found."
-    fi
-
-    print_success "Uninstallation and cleanup complete."
     # Do not exit, just return to the menu
 }
 
@@ -143,7 +108,7 @@ while true; do
             ;;
         4)
             print_header "Cleaning up /etc/hosts file..."
-            sudo /root/cleanup_hosts.sh
+            sudo /root/cleanup_hosts.sh  # Ensure cleanup script works
             ;;
         5)
             print_header "Installing or updating bt.sh script..."
