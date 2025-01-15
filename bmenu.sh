@@ -112,11 +112,6 @@ uninstall_all() {
 cleanup_files() {
     echo "Cleaning up files and /etc/hosts..."
 
-    # Display the current contents of /etc/hosts before modifying
-    echo "Current contents of /etc/hosts:"
-    cat /etc/hosts
-    echo "------------------------------------------"
-
     # Backup the /etc/hosts file before modifying it
     echo "Backing up /etc/hosts to /etc/hosts.bak..."
     sudo cp /etc/hosts /etc/hosts.bak
@@ -127,49 +122,22 @@ cleanup_files() {
     sudo sed -i '/ads/d' /etc/hosts
     sudo sed -i '/hostsTrackers/d' /etc/hosts
 
-    # List of files to remove from /root
-    files_to_remove_root=(
-        "/root/bmenu.sh"
-        "/root/uninstall_all.sh"
-        "/root/bt.sh"
-        "/root/hostsTrackers"
-        "/root/cleanup_hosts.sh.save"
-        "/root/trackers"
-        "/root/hostsTrackers"
-    )
+    # Remove the `hostsTrackers` file from both /root and /home/ubuntu
+    if [ -f "/root/hostsTrackers" ]; then
+        sudo rm -f /root/hostsTrackers
+        echo "Removed /root/hostsTrackers"
+    else
+        echo "File /root/hostsTrackers not found"
+    fi
 
-    # List of files to remove from /home/ubuntu
-    files_to_remove_home_ubuntu=(
-        "/home/ubuntu/bmenu.sh"
-        "/home/ubuntu/uninstall_all.sh"
-        "/home/ubuntu/bt.sh"
-        "/home/ubuntu/hostsTrackers"
-        "/home/ubuntu/cleanup_hosts.sh.save"
-        "/home/ubuntu/trackers"
-        "/home/ubuntu/hostsTrackers"
-    )
+    if [ -f "/home/ubuntu/hostsTrackers" ]; then
+        sudo rm -f /home/ubuntu/hostsTrackers
+        echo "Removed /home/ubuntu/hostsTrackers"
+    else
+        echo "File /home/ubuntu/hostsTrackers not found"
+    fi
 
-    # Remove files from /root
-    for file in "${files_to_remove_root[@]}"; do
-        if [ -f "$file" ]; then
-            sudo rm -f "$file"
-            echo "Removed from /root: $file"
-        else
-            echo "File not found in /root: $file"
-        fi
-    done
-
-    # Remove files from /home/ubuntu
-    for file in "${files_to_remove_home_ubuntu[@]}"; do
-        if [ -f "$file" ]; then
-            sudo rm -f "$file"
-            echo "Removed from /home/ubuntu: $file"
-        else
-            echo "File not found in /home/ubuntu: $file"
-        fi
-    done
-
-    print_success "All specified files have been processed and removed."
+    print_success "File cleanup and /etc/hosts modification completed."
 }
 
 # Display the menu
