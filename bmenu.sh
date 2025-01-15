@@ -62,12 +62,12 @@ remove_host() {
 uninstall_all() {
     echo "Uninstalling all and cleaning up..."
 
-    # Dynamically find files to remove (search within /root and /etc for the specified files)
-    BMENU_PATH=$(find /root /etc -type f -name "bmenu.sh" 2>/dev/null)
-    BT_PATH=$(find /root /etc -type f -name "bt.sh" 2>/dev/null)
-    HOSTS_TRACKERS_PATH=$(find /root /etc -type f -name "hostsTrackers" 2>/dev/null)
-    CLEANUP_PATH=$(find /root /etc -type f -name "cleanup_hosts.sh.save" 2>/dev/null)
-    UNINSTALL_PATH=$(find /root /etc -type f -name "uninstall_all.sh" 2>/dev/null)
+    # Dynamically find files to remove
+    BMENU_PATH=$(find / -type f -name "bmenu.sh" 2>/dev/null)
+    BT_PATH=$(find / -type f -name "bt.sh" 2>/dev/null)
+    HOSTS_TRACKERS_PATH=$(find / -type f -name "hostsTrackers" 2>/dev/null)
+    CLEANUP_PATH=$(find / -type f -name "cleanup_hosts.sh.save" 2>/dev/null)
+    UNINSTALL_PATH=$(find / -type f -name "uninstall_all.sh" 2>/dev/null)
 
     # Remove the files if found
     if [ -n "$BMENU_PATH" ]; then
@@ -106,13 +106,14 @@ uninstall_all() {
     fi
 
     print_success "Uninstallation and cleanup complete."
+    # Do not exit, just return to the menu
 }
 
 # Display the menu
 while true; do
     clear
     print_header "DARK-PROJECT B-IP MENU INTERFACE"
-    print_header "Created by x404 MasterHide"
+    print_header "Created by x404 MASTER"
     echo "--------------------------------------------"
     echo "1. Add a new host to block"
     echo "2. Remove a host from the blocklist"
@@ -141,17 +142,16 @@ while true; do
             read -n 1
             ;;
         4)
-            print_success "Cleaning up /etc/hosts file..."
+            print_header "Cleaning up /etc/hosts file..."
             sudo /root/cleanup_hosts.sh
             ;;
         5)
-            print_success "Installing or updating bt.sh script..."
+            print_header "Installing or updating bt.sh script..."
             sudo /root/bt.sh
             ;;
         6)
             uninstall_all  # Call the uninstall function
-            echo "Uninstallation complete. Exiting script."
-            exit 0  # Exit after uninstallation
+            # Stay in the menu after uninstallation, don't exit
             ;;
         7)
             print_success "Exiting. Goodbye Adarei umma!"
