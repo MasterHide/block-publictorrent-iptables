@@ -6,6 +6,17 @@
 
 echo -n "Blocking public trackers ... "
 
+# Ensure wget and curl are installed
+if ! command -v wget &> /dev/null; then
+    echo "wget is not installed. Please install it and try again."
+    exit 1
+fi
+
+if ! command -v curl &> /dev/null; then
+    echo "curl is not installed. Please install it and try again."
+    exit 1
+fi
+
 # Download trackers file
 wget -q -O /etc/trackers https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/trackers
 if [ $? -ne 0 ]; then
@@ -64,11 +75,12 @@ install_bt_script() {
     fi
 }
 
-# Check if bmenu.sh exists, and if it does, make it executable and run it
-if [ -f "/root/bmenu.sh" ]; then
-    chmod +x /root/bmenu.sh
+# Check if bmenu.sh exists in /home/ubuntu/ and run it
+if [ -f "/home/ubuntu/bmenu.sh" ]; then
+    chmod +x /home/ubuntu/bmenu.sh
     echo "Running the menu interface..."
-    /root/bmenu.sh
+    /home/ubuntu/bmenu.sh
 else
-    echo "bmenu.sh not found, skipping menu interface."
+    echo "bmenu.sh not found in /home/ubuntu/, skipping menu interface."
+    echo "Please ensure the 'bmenu.sh' file exists in the correct directory or move it there."
 fi
