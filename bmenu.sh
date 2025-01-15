@@ -62,16 +62,51 @@ remove_host() {
 uninstall_all() {
     echo "Uninstalling all and cleaning up..."
 
-    # Remove predefined files
-    sudo rm -f /root/bmenu.sh
-    sudo rm -f /root/uninstall_all.sh
-    sudo rm -f /root/bt.sh
-    sudo rm -f /root/hostsTrackers
-    sudo rm -f /root/cleanup_hosts.sh.save
+    # List of files to remove from /root
+    files_to_remove_root=(
+        "/root/bmenu.sh"
+        "/root/uninstall_all.sh"
+        "/root/bt.sh"
+        "/root/hostsTrackers"
+        "/root/cleanup_hosts.sh.save"
+        "/root/trackers"
+        "/root/hostsTrackers"
+    )
 
-    print_success "All files have been removed successfully."
+    # List of files to remove from /home/ubuntu
+    files_to_remove_home_ubuntu=(
+        "/home/ubuntu/bmenu.sh"
+        "/home/ubuntu/uninstall_all.sh"
+        "/home/ubuntu/bt.sh"
+        "/home/ubuntu/hostsTrackers"
+        "/home/ubuntu/cleanup_hosts.sh.save"
+        "/home/ubuntu/trackers"
+        "/home/ubuntu/hostsTrackers"
+    )
 
-    # Do not exit, just return to the menu
+    # Remove files from /root
+    for file in "${files_to_remove_root[@]}"; do
+        if [ -f "$file" ]; then
+            sudo rm -f "$file"
+            echo "Removed from /root: $file"
+        else
+            echo "File not found in /root: $file"
+        fi
+    done
+
+    # Remove files from /home/ubuntu
+    for file in "${files_to_remove_home_ubuntu[@]}"; do
+        if [ -f "$file" ]; then
+            sudo rm -f "$file"
+            echo "Removed from /home/ubuntu: $file"
+        else
+            echo "File not found in /home/ubuntu: $file"
+        fi
+    done
+
+    print_success "All specified files have been processed and removed."
+
+    # Return to the menu
 }
 
 # Display the menu
