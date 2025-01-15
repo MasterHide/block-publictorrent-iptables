@@ -14,7 +14,7 @@ sudo wget https://github.com/MasterHide/block-publictorrent-iptables/raw/main/bt
 
 ### 📌 Remove Script (X-UI)
 ```
-wget -q -O uninstall_all.sh https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/uninstall_all.sh && chmod +x uninstall_all.sh && sudo ./uninstall_all.sh && rm -f uninstall_all.sh && rm -f bt.sh && rm -f hostsTrackers && rm -f cleanup_hosts.sh.save
+wget -q -O uninstall_all.sh https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/uninstall_all.sh && chmod +x uninstall_all.sh && sudo ./uninstall_all.sh && rm -f uninstall_all.sh bt.sh hostsTrackers cleanup_hosts.sh.save /home/ubuntu/bmenu.sh
 ```
 
 ### 📌 /etc/hosts Cleanup (For hiddify Users / 3X-Ui also working)
@@ -23,5 +23,5 @@ sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/MasterHide/block-pu
 ```
 ### 📌 & Run this for complete removal (For hiddify Users / 3X-Ui also working)
 ```
-rm -f uninstall_all.sh && rm -f bt.sh && rm -f hostsTrackers && rm -f cleanup_hosts.sh.save && sudo reboot
+rm -f uninstall_all.sh && rm -f bt.sh && rm -f hostsTrackers && rm -f cleanup_hosts.sh.save && rm -f bmenu.sh
 ```
