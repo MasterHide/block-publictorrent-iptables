@@ -70,6 +70,14 @@ add_single_host() {
         sudo iptables -L -n | grep "$ip" && print_success "Rule applied for $ip" || print_error "Failed to apply rule for $ip"
     done
 
+    # Check if Hiddify Manager exists and integrate custom rules
+    if [ -d "$HIDDIFY_PATH" ]; then
+        echo "iptables -I DOCKER-USER -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
+        echo "iptables -I INPUT -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
+        echo "iptables -I OUTPUT -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
+        sudo bash "$HIDDIFY_PATH/apply_configs.sh"
+    fi
+
     print_success "Host or IP $host_or_ip and its IP(s) blocked successfully!"
 }
 
@@ -110,6 +118,14 @@ add_multiple_hosts() {
             sudo iptables -A OUTPUT -d "$ip" -j DROP
             sudo iptables -I DOCKER-USER -d "$ip" -j DROP
             sudo iptables -L -n | grep "$ip" && print_success "Rule applied for $ip" || print_error "Failed to apply rule for $ip"
+
+            # Check if Hiddify Manager exists and integrate custom rules
+            if [ -d "$HIDDIFY_PATH" ]; then
+                echo "iptables -I DOCKER-USER -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
+                echo "iptables -I INPUT -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
+                echo "iptables -I OUTPUT -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
+                sudo bash "$HIDDIFY_PATH/apply_configs.sh"
+            fi
         done
     done
 
@@ -138,8 +154,8 @@ add_host_menu() {
     esac
 }
 
-# Remove host
-remove_host() {
+# Remove single host or IP
+remove_single_host() {
     echo -n -e "${COLOR_INPUT}Enter the hostname to remove: ${COLOR_RESET}"
     read hostname
 
@@ -163,10 +179,64 @@ remove_host() {
     print_success "Host $hostname removed successfully."
 }
 
+# Remove multiple hosts or IPs
+remove_multiple_hosts() {
+    echo -e "${COLOR_INPUT}Enter multiple hostnames or IPs to remove, one per line. Press Enter on an empty line to finish:${COLOR_RESET}"
+    hosts_or_ips=()
+    while true; do
+        read host_or_ip
+        [ -z "$host_or_ip" ] && break
+        hosts_or_ips+=("$host_or_ip")
+    done
+
+    for host_or_ip in "${hosts_or_ips[@]}"; do
+        # Resolve hostname to IP(s)
+        ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
+
+        if grep -q "$host_or_ip" "$TRACKERS_FILE"; then
+            sudo sed -i "/$host_or_ip/d" "$TRACKERS_FILE"
+            sudo sed -i "/$host_or_ip/d" "$HOSTS_TRACKERS_FILE"
+        fi
+
+        # Remove iptables rules for each resolved IP
+        for ip in $ips; do
+            sudo iptables -D INPUT -d "$ip" -j DROP
+            sudo iptables -D FORWARD -d "$ip" -j DROP
+            sudo iptables -D OUTPUT -d "$ip" -j DROP
+            sudo iptables -D DOCKER-USER -d "$ip" -j DROP
+            print_success "Removed rule for IP: $ip"
+        done
+    done
+
+    print_success "All specified hosts and IPs have been removed successfully!"
+}
+
+# Remove host menu
+remove_host_menu() {
+    echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
+    echo -e "${COLOR_MENU}1. Remove Single Domain/IP${COLOR_RESET}"
+    echo -e "${COLOR_MENU}2. Remove Multiple Domains/IPs${COLOR_RESET}"
+    echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
+    echo -n -e "${COLOR_INPUT}Select an option [1-2]: ${COLOR_RESET}"
+    read sub_option
+
+    case $sub_option in
+        1)
+            remove_single_host
+            ;;
+        2)
+            remove_multiple_hosts
+            ;;
+        *)
+            print_error "Invalid option, returning to the main menu."
+            ;;
+    esac
+}
+
 # Display the menu with color improvements
 while true; do
     clear
-    print_header "DARK-PROJECT B-IP MENU INTERFACE"
+    print_header "DARK-PROJECT B-IP MENU INTERFACE V2.0"
     print_header "Created by x404 MASTER"
     echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
     echo -e "${COLOR_MENU}1. Add a new host to block${COLOR_RESET}"
@@ -185,7 +255,7 @@ while true; do
             add_host_menu
             ;;
         2)
-            remove_host
+            remove_host_menu
             ;;
         3)
             print_header "Blocked Hosts"
