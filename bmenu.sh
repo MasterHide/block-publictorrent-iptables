@@ -41,32 +41,54 @@ print_error() {
 add_host() {
     echo -n -e "${COLOR_INPUT}Enter the hostname to add: ${COLOR_RESET}"
     read hostname
+
+    # Resolve hostname to IP(s)
+    ips=$(getent ahosts "$hostname" | awk '{print $1}' | sort -u)
+
+    if [ -z "$ips" ]; then
+        print_error "Failed to resolve $hostname to any IP address. Exiting."
+        return
+    fi
+
+    # Add hostname to tracker files
     if ! grep -q "$hostname" "$TRACKERS_FILE" && ! grep -q "$hostname" "$HOSTS_TRACKERS_FILE"; then
         echo "$hostname" | sudo tee -a "$TRACKERS_FILE" > /dev/null
         echo "$hostname" | sudo tee -a "$HOSTS_TRACKERS_FILE" > /dev/null
-        sudo iptables -A INPUT -d "$hostname" -j DROP
-        sudo iptables -A FORWARD -d "$hostname" -j DROP
-        sudo iptables -A OUTPUT -d "$hostname" -j DROP
-        print_success "Host $hostname added and blocked successfully!"
-    else
-        print_error "Host $hostname already exists in the blocklist."
     fi
+
+    # Block each resolved IP
+    for ip in $ips; do
+        sudo iptables -A INPUT -d "$ip" -j DROP
+        sudo iptables -A FORWARD -d "$ip" -j DROP
+        sudo iptables -A OUTPUT -d "$ip" -j DROP
+        sudo iptables -L -n | grep "$ip" && print_success "Rule applied for $ip" || print_error "Failed to apply rule for $ip"
+    done
+
+    print_success "Host $hostname and its IP(s) blocked successfully!"
 }
 
 # Remove host
 remove_host() {
     echo -n -e "${COLOR_INPUT}Enter the hostname to remove: ${COLOR_RESET}"
     read hostname
+
+    # Resolve hostname to IP(s)
+    ips=$(getent ahosts "$hostname" | awk '{print $1}' | sort -u)
+
     if grep -q "$hostname" "$TRACKERS_FILE"; then
         sudo sed -i "/$hostname/d" "$TRACKERS_FILE"
         sudo sed -i "/$hostname/d" "$HOSTS_TRACKERS_FILE"
-        sudo iptables -D INPUT -d "$hostname" -j DROP
-        sudo iptables -D FORWARD -d "$hostname" -j DROP
-        sudo iptables -D OUTPUT -d "$hostname" -j DROP
-        print_success "Host $hostname removed successfully."
-    else
-        print_error "Host $hostname not found in the blocklist."
     fi
+
+    # Remove iptables rules for each resolved IP
+    for ip in $ips; do
+        sudo iptables -D INPUT -d "$ip" -j DROP
+        sudo iptables -D FORWARD -d "$ip" -j DROP
+        sudo iptables -D OUTPUT -d "$ip" -j DROP
+        print_success "Removed rule for IP: $ip"
+    done
+
+    print_success "Host $hostname removed successfully."
 }
 
 # Uninstall and clean up all files (using predefined paths, no dynamic search)
