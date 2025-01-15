@@ -31,30 +31,49 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-# Function to download a file and handle errors
-download_file() {
-    local url=$1
-    local output_path=$2
-    local retries=3
+# Define paths for multi-location installation
+INSTALL_PATHS=(
+    "/home/ubuntu/block-publictorrent-iptables"
+    "/root/block-publictorrent-iptables"
+    "/opt/hiddify-manager/block-publictorrent-iptables"
+)
 
-    for ((i=1; i<=retries; i++)); do
-        echo -n "Downloading ${url}..."
+# Ensure all directories exist
+for path in "${INSTALL_PATHS[@]}"; do
+    mkdir -p "$path"
+    print_success "Ensured directory exists: $path"
+done
+
+# Function to download a file to all paths
+download_file_to_all_paths() {
+    local url=$1
+    local filename=$(basename "$url")
+
+    for path in "${INSTALL_PATHS[@]}"; do
+        local output_path="$path/$filename"
         wget -q -O "$output_path" "$url"
         if [ $? -eq 0 ]; then
-            print_success "Downloaded successfully to ${output_path}."
-            return 0
+            print_success "Downloaded $filename to $output_path."
+            chmod +x "$output_path"
         else
-            print_warning "Failed to download. Retrying ($i/$retries)..."
+            print_error "Failed to download $filename to $output_path."
         fi
     done
-    print_error "Failed to download after $retries attempts."
-    return 1
 }
 
-echo -n "Blocking public trackers ... "
+# Download essential files to all paths
+download_file_to_all_paths "https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/bmenu.sh"
+download_file_to_all_paths "https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/hostsTrackers"
+download_file_to_all_paths "https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/bt.sh"
 
-# Download trackers file
-download_file "https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/trackers" "/etc/trackers" || exit 1
+# Update /etc/hosts with hostsTrackers
+for path in "${INSTALL_PATHS[@]}"; do
+    if [ -f "$path/hostsTrackers" ]; then
+        cat "$path/hostsTrackers" | sort -uf >> /etc/hosts
+        print_success "Updated /etc/hosts with $path/hostsTrackers."
+        rm -f "$path/hostsTrackers"
+    fi
+done
 
 # Create cron job for blocking public trackers
 cat >/etc/cron.daily/denypublic<<'EOF'
@@ -72,64 +91,16 @@ done
 EOF
 chmod +x /etc/cron.daily/denypublic
 
-# Download hostsTrackers file and update /etc/hosts
-download_file "https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/hostsTrackers" "hostsTrackers" || exit 1
+print_success "Blocking public trackers setup completed successfully."
 
-cat hostsTrackers | sort -uf >> /etc/hosts
-rm -f hostsTrackers
-
-print_success "Blocking public trackers completed successfully."
-
-# Function to install or update the bt.sh script
-install_bt_script() {
-    print_warning "Installing or updating bt.sh script..."
-
-    # Ensure no backup files of bt.sh are left (bt.sh.1, bt.sh.2, etc.)
-    rm -f /root/bt.sh*
-    print_success "Removed old bt.sh and backup files."
-
-    # Download and install the new bt.sh script
-    download_file "https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/bt.sh" "/root/bt.sh" || exit 1
-
-    chmod +x /root/bt.sh
-    print_success "bt.sh script installed/updated successfully."
-}
-
-# Automatically download and execute bmenu.sh
-download_and_run_bmenu() {
-    print_warning "Downloading bmenu.sh..."
-
-    # Set download paths and URLs
-    local download_path_ubuntu="/home/ubuntu/bmenu.sh"
-    local download_path_root="/root/bmenu.sh"
-    local download_path_hiddify="/opt/hiddify-manager/bmenu.sh"
-    local url="https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/bmenu.sh"
-
-    # Try downloading bmenu.sh to /home/ubuntu/, /root/, and /opt/hiddify-manager/
-    if ! download_file "$url" "$download_path_ubuntu"; then
-        print_warning "Failed to download to /home/ubuntu, trying /root/..."
-        if ! download_file "$url" "$download_path_root"; then
-            print_warning "Failed to download to /root, trying /opt/hiddify-manager/..."
-            if ! download_file "$url" "$download_path_hiddify"; then
-                print_error "Failed to download bmenu.sh to all locations. Exiting."
-                exit 1
-            fi
-        fi
+# Automatically run bmenu.sh from any valid path
+for path in "${INSTALL_PATHS[@]}"; do
+    local bmenu_path="$path/bmenu.sh"
+    if [ -f "$bmenu_path" ]; then
+        print_success "Starting menu interface from $bmenu_path..."
+        "$bmenu_path"
+        exit 0
     fi
+done
 
-    # Make bmenu.sh executable
-    chmod +x "$download_path_ubuntu" || chmod +x "$download_path_root" || chmod +x "$download_path_hiddify"
-
-    # Run bmenu.sh (start the menu interface)
-    print_success "Starting menu interface..."
-    if [ -f "$download_path_ubuntu" ]; then
-        $download_path_ubuntu
-    elif [ -f "$download_path_root" ]; then
-        $download_path_root
-    else
-        $download_path_hiddify
-    fi
-}
-
-# Run the function to download and start the menu interface
-download_and_run_bmenu
+print_error "Failed to find bmenu.sh in any of the expected paths."
