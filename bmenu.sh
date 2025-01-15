@@ -58,10 +58,61 @@ remove_host() {
     fi
 }
 
+# Uninstall and clean up all files dynamically
+uninstall_all() {
+    echo "Uninstalling all and cleaning up..."
+
+    # Dynamically find files to remove (search within /root and /etc for the specified files)
+    BMENU_PATH=$(find /root /etc -type f -name "bmenu.sh" 2>/dev/null)
+    BT_PATH=$(find /root /etc -type f -name "bt.sh" 2>/dev/null)
+    HOSTS_TRACKERS_PATH=$(find /root /etc -type f -name "hostsTrackers" 2>/dev/null)
+    CLEANUP_PATH=$(find /root /etc -type f -name "cleanup_hosts.sh.save" 2>/dev/null)
+    UNINSTALL_PATH=$(find /root /etc -type f -name "uninstall_all.sh" 2>/dev/null)
+
+    # Remove the files if found
+    if [ -n "$BMENU_PATH" ]; then
+        sudo rm -f "$BMENU_PATH"
+        print_success "Removed bmenu.sh"
+    else
+        print_error "bmenu.sh not found."
+    fi
+
+    if [ -n "$BT_PATH" ]; then
+        sudo rm -f "$BT_PATH"
+        print_success "Removed bt.sh"
+    else
+        print_error "bt.sh not found."
+    fi
+
+    if [ -n "$HOSTS_TRACKERS_PATH" ]; then
+        sudo rm -f "$HOSTS_TRACKERS_PATH"
+        print_success "Removed hostsTrackers"
+    else
+        print_error "hostsTrackers not found."
+    fi
+
+    if [ -n "$CLEANUP_PATH" ]; then
+        sudo rm -f "$CLEANUP_PATH"
+        print_success "Removed cleanup_hosts.sh.save"
+    else
+        print_error "cleanup_hosts.sh.save not found."
+    fi
+
+    if [ -n "$UNINSTALL_PATH" ]; then
+        sudo rm -f "$UNINSTALL_PATH"
+        print_success "Removed uninstall_all.sh"
+    else
+        print_error "uninstall_all.sh not found."
+    fi
+
+    print_success "Uninstallation and cleanup complete."
+}
+
 # Display the menu
 while true; do
     clear
     print_header "DARK-PROJECT B-IP MENU INTERFACE"
+    print_header "Created by x404 MasterHide"
     echo "--------------------------------------------"
     echo "1. Add a new host to block"
     echo "2. Remove a host from the blocklist"
@@ -90,19 +141,20 @@ while true; do
             read -n 1
             ;;
         4)
-            print_info "Cleaning up /etc/hosts file..."
+            print_success "Cleaning up /etc/hosts file..."
             sudo /root/cleanup_hosts.sh
             ;;
         5)
-            print_info "Installing or updating bt.sh script..."
+            print_success "Installing or updating bt.sh script..."
             sudo /root/bt.sh
             ;;
         6)
-            print_error "Uninstalling all and resetting system..."
-            sudo /root/uninstall_all.sh
+            uninstall_all  # Call the uninstall function
+            echo "Uninstallation complete. Exiting script."
+            exit 0  # Exit after uninstallation
             ;;
         7)
-            print_success "Exiting. Goodbye!"
+            print_success "Exiting. Goodbye Adarei umma!"
             exit 0
             ;;
         *)
