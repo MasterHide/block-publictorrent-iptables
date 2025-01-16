@@ -113,90 +113,6 @@ add_single_host() {
     print_success "Host or IP $host_or_ip and its IP(s) blocked successfully!"
 }
 
-# Add multiple hosts or IPs
-add_multiple_hosts() {
-    echo -e "${COLOR_INPUT}Enter multiple hostnames or IPs, one per line. Press Enter on an empty line to finish:${COLOR_RESET}"
-    hosts_or_ips=()
-    while true; do
-        read host_or_ip
-        [ -z "$host_or_ip" ] && break
-        hosts_or_ips+=("$host_or_ip")
-    done
-
-    for host_or_ip in "${hosts_or_ips[@]}"; do
-        # If the input is a valid IP, process it directly
-        if [[ "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            ips=$host_or_ip
-        else
-            # Resolve hostname to IP(s)
-            ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
-        fi
-
-        if [ -z "$ips" ]; then
-            print_error "Failed to resolve $host_or_ip to any IP address. Skipping."
-            continue
-        fi
-
-        # Add hostname or IP to tracker files
-        if ! grep -q "$host_or_ip" "$TRACKERS_FILE" && ! grep -q "$host_or_ip" "$HOSTS_TRACKERS_FILE"; then
-            echo "$host_or_ip" | sudo tee -a "$TRACKERS_FILE" > /dev/null
-            echo "$host_or_ip" | sudo tee -a "$HOSTS_TRACKERS_FILE" > /dev/null
-        fi
-
-        # Block each resolved IP in both default and Docker chains
-        for ip in $ips; do
-            sudo iptables -A INPUT -d "$ip" -j DROP
-            sudo iptables -A FORWARD -d "$ip" -j DROP
-            sudo iptables -A OUTPUT -d "$ip" -j DROP
-            sudo iptables -I DOCKER-USER -d "$ip" -j DROP
-            sudo iptables -L -n | grep "$ip" && print_success "Rule applied for $ip" || print_error "Failed to apply rule for $ip"
-        done
-    done
-
-    # Prevent Hiddify Manager from applying config during the update
-    touch "$LOCK_FILE"
-
-    # Check if Hiddify Manager exists and integrate custom rules
-    if [ -d "$HIDDIFY_PATH" ]; then
-        echo "iptables -I DOCKER-USER -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
-        echo "iptables -I INPUT -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
-        echo "iptables -I OUTPUT -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
-    fi
-
-    # Remove the lock file once the changes are made
-    rm -f "$LOCK_FILE"
-
-    print_success "All specified hosts and IPs have been blocked successfully!"
-}
-
-# Remove specific files from the system (only if they exist)
-reset_system() {
-    print_header "Uninstalling and resetting system..."
-
-    # Deleting specific files in /opt/hiddify-manager (if they exist)
-    [ -f /opt/hiddify-manager/bt.sh ] && rm -f /opt/hiddify-manager/bt.sh
-    [ -f /opt/hiddify-manager/bmenu.sh ] && rm -f /opt/hiddify-manager/bmenu.sh
-    [ -f /opt/hiddify-manager/hostsTrackers ] && rm -f /opt/hiddify-manager/hostsTrackers
-    [ -f /opt/hiddify-manager/trackers ] && rm -f /opt/hiddify-manager/trackers
-
-    # Deleting specific files in /home/ubuntu (if they exist)
-    [ -f /home/ubuntu/bt.sh ] && rm -f /home/ubuntu/bt.sh
-    [ -f /home/ubuntu/bmenu.sh ] && rm -f /home/ubuntu/bmenu.sh
-    [ -f /home/ubuntu/hostsTrackers ] && rm -f /home/ubuntu/hostsTrackers
-    [ -f /home/ubuntu/trackers ] && rm -f /home/ubuntu/trackers
-
-    # Deleting specific files in /root (if they exist)
-    [ -f /root/bt.sh ] && rm -f /root/bt.sh
-    [ -f /root/bmenu.sh ] && rm -f /root/bmenu.sh
-    [ -f /root/hostsTrackers ] && rm -f /root/hostsTrackers
-    [ -f /root/trackers ] && rm -f /root/trackers
-
-    # Optionally, if you want to execute system reset commands
-    sudo bash "$BMENU_PATH" uninstall_all
-
-    print_success "Specific files deleted from /opt/hiddify-manager, /home/ubuntu, and /root."
-}
-
 # Main Menu
 while true; do
     clear
@@ -217,10 +133,66 @@ while true; do
 
     case $option in
         1)
-            add_single_host
+            # Submenu for option 1
+            while true; do
+                clear
+                print_header "Add a new host to block"
+                echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
+                echo -e "${COLOR_MENU}1. Add a single host${COLOR_RESET}"
+                echo -e "${COLOR_MENU}2. Add multiple hosts${COLOR_RESET}"
+                echo -e "${COLOR_MENU}3. Go back to main menu${COLOR_RESET}"
+                echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
+                echo -n -e "${COLOR_INPUT}Select an option [1-3]: ${COLOR_RESET}"
+                read submenu_option
+
+                case $submenu_option in
+                    1)
+                        add_single_host
+                        break
+                        ;;
+                    2)
+                        add_multiple_hosts
+                        break
+                        ;;
+                    3)
+                        break
+                        ;;
+                    *)
+                        print_error "Invalid option, please choose a valid option."
+                        ;;
+                esac
+            done
             ;;
         2)
-            remove_host_menu
+            # Submenu for option 2 (remove hosts)
+            while true; do
+                clear
+                print_header "Remove a host from the blocklist"
+                echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
+                echo -e "${COLOR_MENU}1. Remove a single host${COLOR_RESET}"
+                echo -e "${COLOR_MENU}2. Remove multiple hosts${COLOR_RESET}"
+                echo -e "${COLOR_MENU}3. Go back to main menu${COLOR_RESET}"
+                echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
+                echo -n -e "${COLOR_INPUT}Select an option [1-3]: ${COLOR_RESET}"
+                read submenu_option
+
+                case $submenu_option in
+                    1)
+                        remove_single_host
+                        break
+                        ;;
+                    2)
+                        remove_multiple_hosts
+                        break
+                        ;;
+                    3)
+                        break
+                        ;;
+                    *)
+                        print_error "Invalid option, please choose a valid option."
+                        ;;
+                esac
+            done
             ;;
         3)
             print_header "Blocked Hosts"
