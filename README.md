@@ -4,7 +4,8 @@ x404 <img src="https://img.shields.io/badge/Version-2.0-blue.svg"></h2>
                 
 # 📌 ʙʟᴏᴄᴋ ᴘᴜʙʟɪᴄ ᴛᴏʀʀᴇɴᴛ 
 
-##### **Maintain the tracker's blacklists. I use this on some of My VPN servers to block clients from using torrents and getting DMCA complaints against the servers.**
+##### **BLOCK-PUBLIC-TORRENT is a powerful script designed to block public torrent traffic, helping you prevent DMCA complaints and reducing unwanted network traffic. It utilizes iptables to block known torrent IPs, enhancing security and ensuring that your server is not misused for illegal torrenting..**
+![photo_2025-01-16_11-44-15](https://github.com/user-attachments/assets/fd58a309-5896-45b8-83ab-1f9c7854c30d)
 
 
 ### 📌 Install & Upgrade (ANY)
