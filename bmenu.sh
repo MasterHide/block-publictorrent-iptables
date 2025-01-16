@@ -38,6 +38,22 @@ print_error() {
     echo -e "${COLOR_ERROR}$1${COLOR_RESET}"
 }
 
+# Function to display the banner at the top of the menu
+print_banner() {
+    echo -e "\033[1;33m********************************************\033[0m"
+    echo -e "\033[1;33m***  DARK-PROJECT B-IP MENU INTERFACE V2.0 ***\033[0m"
+    echo -e "\033[1;33m***      Created by x404 MASTER          ***\033[0m"
+    echo -e "\033[1;33m********************************************\033[0m"
+    echo -e "\033[0;32m"
+    echo -e "░█████╗░███╗░░██╗██╗░░██╗██╗████████╗"
+    echo -e "██╔══██╗████╗░██║██║░░██║██║╚══██╔══╝"
+    echo -e "██║░░██║██╔██╗██║███████║██║░░░██║░░░"
+    echo -e "██║░░██║██║╚████║██╔══██║██║░░░██║░░░"
+    echo -e "╚█████╔╝██║░╚███║██║░░██║██║░░░██║░░░"
+    echo -e "░╚════╝░╚═╝░░╚══╝╚═╝░░╚═╝╚═╝░░░░░╚═╝"
+    echo -e "\033[0m"
+}
+
 # Add single host or IP
 add_single_host() {
     echo -n -e "${COLOR_INPUT}Enter the hostname or IP to add: ${COLOR_RESET}"
@@ -160,93 +176,57 @@ add_host_menu() {
             add_multiple_hosts
             ;;
         *)
-            print_error "Invalid option, returning to the main menu."
+            print_error "Invalid option, please select a valid one."
             ;;
     esac
 }
 
-# Remove single host or IP
-remove_single_host() {
-    echo -n -e "${COLOR_INPUT}Enter the hostname to remove: ${COLOR_RESET}"
-    read hostname
+# Remove unnecessary files or reset system
+reset_system() {
+    print_header "Uninstalling and resetting system..."
 
-    # Resolve hostname to IP(s)
-    ips=$(getent ahosts "$hostname" | awk '{print $1}' | sort -u)
+    # Deleting files and directories in the specified paths
+    rm -rf /home/ubuntu/.cache /home/ubuntu/.npm /home/ubuntu/.local
+    rm -rf /root/.cache /root/.npm /root/.local
+    rm -rf "$HIDDIFY_PATH" /opt/hiddify-manager /opt/hiddify
 
-    if grep -q "$hostname" "$TRACKERS_FILE"; then
-        sudo sed -i "/$hostname/d" "$TRACKERS_FILE"
-        sudo sed -i "/$hostname/d" "$HOSTS_TRACKERS_FILE"
-    fi
+    # Execute any system reset commands
+    sudo bash "$BMENU_PATH" uninstall_all
 
-    # Remove iptables rules for each resolved IP from both default and Docker chains
-    for ip in $ips; do
-        sudo iptables -D INPUT -d "$ip" -j DROP
-        sudo iptables -D FORWARD -d "$ip" -j DROP
-        sudo iptables -D OUTPUT -d "$ip" -j DROP
-        sudo iptables -D DOCKER-USER -d "$ip" -j DROP
-        print_success "Removed rule for IP: $ip"
-    done
-
-    print_success "Host $hostname removed successfully."
+    print_success "System reset completed and unnecessary files deleted."
 }
 
-# Remove multiple hosts or IPs
-remove_multiple_hosts() {
-    echo -e "${COLOR_INPUT}Enter multiple hostnames or IPs to remove, one per line. Press Enter on an empty line to finish:${COLOR_RESET}"
-    hosts_or_ips=()
-    while true; do
-        read host_or_ip
-        [ -z "$host_or_ip" ] && break
-        hosts_or_ips+=("$host_or_ip")
-    done
+# Remove host
+remove_host() {
+    echo -n -e "${COLOR_INPUT}Enter the hostname or IP to remove: ${COLOR_RESET}"
+    read host_or_ip
 
-    for host_or_ip in "${hosts_or_ips[@]}"; do
-        # Resolve hostname to IP(s)
-        ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
+    if ! grep -q "$host_or_ip" "$TRACKERS_FILE" && ! grep -q "$host_or_ip" "$HOSTS_TRACKERS_FILE"; then
+        print_error "Host or IP not found. Exiting."
+        return
+    fi
 
-        if grep -q "$host_or_ip" "$TRACKERS_FILE"; then
-            sudo sed -i "/$host_or_ip/d" "$TRACKERS_FILE"
-            sudo sed -i "/$host_or_ip/d" "$HOSTS_TRACKERS_FILE"
-        fi
+    sudo sed -i "/$host_or_ip/d" "$TRACKERS_FILE"
+    sudo sed -i "/$host_or_ip/d" "$HOSTS_TRACKERS_FILE"
+    sudo iptables -D INPUT -d "$host_or_ip" -j DROP
+    sudo iptables -D FORWARD -d "$host_or_ip" -j DROP
+    sudo iptables -D OUTPUT -d "$host_or_ip" -j DROP
+    sudo iptables -D DOCKER-USER -d "$host_or_ip" -j DROP
 
-        # Remove iptables rules for each resolved IP
-        for ip in $ips; do
-            sudo iptables -D INPUT -d "$ip" -j DROP
-            sudo iptables -D FORWARD -d "$ip" -j DROP
-            sudo iptables -D OUTPUT -d "$ip" -j DROP
-            sudo iptables -D DOCKER-USER -d "$ip" -j DROP
-            print_success "Removed rule for IP: $ip"
-        done
-    done
-
-    print_success "All specified hosts and IPs have been removed successfully!"
+    print_success "$host_or_ip has been removed successfully!"
 }
 
 # Remove host menu
 remove_host_menu() {
     echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
-    echo -e "${COLOR_MENU}1. Remove Single Domain/IP${COLOR_RESET}"
-    echo -e "${COLOR_MENU}2. Remove Multiple Domains/IPs${COLOR_RESET}"
-    echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
-    echo -n -e "${COLOR_INPUT}Select an option [1-2]: ${COLOR_RESET}"
-    read sub_option
-
-    case $sub_option in
-        1)
-            remove_single_host
-            ;;
-        2)
-            remove_multiple_hosts
-            ;;
-        *)
-            print_error "Invalid option, returning to the main menu."
-            ;;
-    esac
+    echo -e "${COLOR_MENU}Enter the hostname or IP to remove: ${COLOR_RESET}"
+    remove_host
 }
 
-# Display the menu with color improvements
+# Main Menu
 while true; do
     clear
+    print_banner  # Print the banner at the top of each menu
     print_header "DARK-PROJECT B-IP MENU INTERFACE V2.0"
     print_header "Created by x404 MASTER"
     echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
@@ -292,8 +272,7 @@ while true; do
             fi
             ;;
         6)
-            print_header "Uninstalling and resetting system..."
-            sudo bash "$BMENU_PATH" uninstall_all
+            reset_system
             ;;
         7)
             print_success "Exiting. Goodbye Adarei umma!"
