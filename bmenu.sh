@@ -12,6 +12,7 @@ HOSTS_TRACKERS_FILE="/etc/hostsTrackers"
 HOSTS_FILE="/etc/hosts"
 HIDDIFY_PATH="/opt/hiddify-manager"
 BMENU_PATH="$HIDDIFY_PATH/bmenu.sh"
+LOCK_FILE="/tmp/hiddify_update_lock"  # Lock file to prevent Hiddify from applying config during script execution
 
 # Color definitions for better UI/UX
 COLOR_HEADER="\033[1;34m"
@@ -70,13 +71,18 @@ add_single_host() {
         sudo iptables -L -n | grep "$ip" && print_success "Rule applied for $ip" || print_error "Failed to apply rule for $ip"
     done
 
+    # Prevent Hiddify Manager from applying config during the update
+    touch "$LOCK_FILE"
+
     # Check if Hiddify Manager exists and integrate custom rules
     if [ -d "$HIDDIFY_PATH" ]; then
         echo "iptables -I DOCKER-USER -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
         echo "iptables -I INPUT -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
         echo "iptables -I OUTPUT -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
-        sudo bash "$HIDDIFY_PATH/apply_configs.sh"
     fi
+
+    # Remove the lock file once the changes are made
+    rm -f "$LOCK_FILE"
 
     print_success "Host or IP $host_or_ip and its IP(s) blocked successfully!"
 }
@@ -118,16 +124,21 @@ add_multiple_hosts() {
             sudo iptables -A OUTPUT -d "$ip" -j DROP
             sudo iptables -I DOCKER-USER -d "$ip" -j DROP
             sudo iptables -L -n | grep "$ip" && print_success "Rule applied for $ip" || print_error "Failed to apply rule for $ip"
-
-            # Check if Hiddify Manager exists and integrate custom rules
-            if [ -d "$HIDDIFY_PATH" ]; then
-                echo "iptables -I DOCKER-USER -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
-                echo "iptables -I INPUT -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
-                echo "iptables -I OUTPUT -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
-                sudo bash "$HIDDIFY_PATH/apply_configs.sh"
-            fi
         done
     done
+
+    # Prevent Hiddify Manager from applying config during the update
+    touch "$LOCK_FILE"
+
+    # Check if Hiddify Manager exists and integrate custom rules
+    if [ -d "$HIDDIFY_PATH" ]; then
+        echo "iptables -I DOCKER-USER -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
+        echo "iptables -I INPUT -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
+        echo "iptables -I OUTPUT -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
+    fi
+
+    # Remove the lock file once the changes are made
+    rm -f "$LOCK_FILE"
 
     print_success "All specified hosts and IPs have been blocked successfully!"
 }
