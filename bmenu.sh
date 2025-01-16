@@ -109,6 +109,51 @@ reset_system() {
     print_success "Specific files deletion process completed."
 }
 
+# Function to add a single host to blocklist
+add_single_host() {
+    echo -e "${COLOR_INPUT}Enter domain or IP to block: ${COLOR_RESET}"
+    read host_or_ip
+
+    # Check if the input is empty
+    if [ -z "$host_or_ip" ]; then
+        print_error "No domain or IP entered. Returning to the menu."
+        return
+    fi
+
+    # Check if it's an IP or a domain
+    if [[ "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        # It's an IP address, use it directly
+        ips="$host_or_ip"
+    else
+        # Resolve the domain to IP(s)
+        ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
+    fi
+
+    # If no IPs are resolved, skip this domain
+    if [ -z "$ips" ]; then
+        print_error "Failed to resolve $host_or_ip to IP addresses."
+        return
+    fi
+
+    # Block the IPs in iptables
+    for ip in $ips; do
+        sudo iptables -A INPUT -d "$ip" -j DROP
+        sudo iptables -A FORWARD -d "$ip" -j DROP
+        sudo iptables -A OUTPUT -d "$ip" -j DROP
+        sudo iptables -I DOCKER-USER -d "$ip" -j DROP
+        print_success "$ip has been blocked successfully."
+
+        # Add domain/IP to the tracker files (if not already present)
+        if ! grep -q "$host_or_ip" "$TRACKERS_FILE" && ! grep -q "$host_or_ip" "$HOSTS_TRACKERS_FILE"; then
+            echo "$host_or_ip" | sudo tee -a "$TRACKERS_FILE" > /dev/null
+            echo "$host_or_ip" | sudo tee -a "$HOSTS_TRACKERS_FILE" > /dev/null
+            print_success "$host_or_ip has been added to the blocklist."
+        else
+            print_error "$host_or_ip is already in the blocklist, skipping."
+        fi
+    done
+}
+
 # Function to add multiple hosts (domains or IPs) to blocklist
 add_multiple_hosts() {
     echo -e "${COLOR_INPUT}Enter domains or IPs to block (press Enter without input to stop):${COLOR_RESET}"
