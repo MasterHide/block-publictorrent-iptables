@@ -64,53 +64,145 @@ print_banner() {
     echo -e "\033[0m"
 }
 
-# Add single host or IP
-add_single_host() {
-    echo -n -e "${COLOR_INPUT}Enter the hostname or IP to add: ${COLOR_RESET}"
-    read host_or_ip
+# Function to reset the system by deleting specific files
+reset_system() {
+    print_header "Uninstalling and resetting system..."
 
-    # If the input is a valid IP, process it directly
-    if [[ "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        ips=$host_or_ip
-    else
-        # Resolve hostname to IP(s)
-        ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
-    fi
-
-    if [ -z "$ips" ]; then
-        print_error "Failed to resolve $host_or_ip to any IP address. Exiting."
+    # Confirm before proceeding with deletion
+    echo -e "${COLOR_WARNING}WARNING: This will delete the following files if they exist: bmenu.sh, bt.sh, and hostsTrackers. Do you want to continue? (yes/no): ${COLOR_RESET}"
+    read confirm
+    if [[ "$confirm" != "yes" ]]; then
+        print_error "Aborted deletion process."
         return
     fi
 
-    # Add hostname or IP to tracker files
-    if ! grep -q "$host_or_ip" "$TRACKERS_FILE" && ! grep -q "$host_or_ip" "$HOSTS_TRACKERS_FILE"; then
-        echo "$host_or_ip" | sudo tee -a "$TRACKERS_FILE" > /dev/null
-        echo "$host_or_ip" | sudo tee -a "$HOSTS_TRACKERS_FILE" > /dev/null
-    fi
+    # List of paths to check and delete the files
+    paths_to_check=( "/home/ubuntu" "/root" "/opt/hiddify-manager" )
 
-    # Block each resolved IP in both default and Docker chains
-    for ip in $ips; do
-        sudo iptables -A INPUT -d "$ip" -j DROP
-        sudo iptables -A FORWARD -d "$ip" -j DROP
-        sudo iptables -A OUTPUT -d "$ip" -j DROP
-        sudo iptables -I DOCKER-USER -d "$ip" -j DROP
-        sudo iptables -L -n | grep "$ip" && print_success "Rule applied for $ip" || print_error "Failed to apply rule for $ip"
+    # Iterate through each directory path
+    for dir in "${paths_to_check[@]}"; do
+        # Check and delete bmenu.sh if it exists
+        if [ -f "$dir/bmenu.sh" ]; then
+            echo "Deleting bmenu.sh in $dir..."
+            sudo rm -f "$dir/bmenu.sh"
+        else
+            print_error "bmenu.sh not found in $dir, skipping."
+        fi
+
+        # Check and delete bt.sh if it exists
+        if [ -f "$dir/bt.sh" ]; then
+            echo "Deleting bt.sh in $dir..."
+            sudo rm -f "$dir/bt.sh"
+        else
+            print_error "bt.sh not found in $dir, skipping."
+        fi
+
+        # Check and delete hostsTrackers if it exists
+        if [ -f "$dir/hostsTrackers" ]; then
+            echo "Deleting hostsTrackers in $dir..."
+            sudo rm -f "$dir/hostsTrackers"
+        else
+            print_error "hostsTrackers not found in $dir, skipping."
+        fi
     done
 
-    # Prevent Hiddify Manager from applying config during the update
-    touch "$LOCK_FILE"
+    print_success "Specific files deletion process completed."
+}
 
-    # Check if Hiddify Manager exists and integrate custom rules
-    if [ -d "$HIDDIFY_PATH" ]; then
-        echo "iptables -I DOCKER-USER -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
-        echo "iptables -I INPUT -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
-        echo "iptables -I OUTPUT -d $ip -j DROP" >> "$HIDDIFY_PATH/apply_configs.sh"
-    fi
+# Function to add multiple hosts (domains or IPs) to blocklist
+add_multiple_hosts() {
+    echo -e "${COLOR_INPUT}Enter domains or IPs to block (press Enter without input to stop):${COLOR_RESET}"
 
-    # Remove the lock file once the changes are made
-    rm -f "$LOCK_FILE"
+    while true; do
+        # Prompt for user input
+        echo -n -e "${COLOR_INPUT}Enter domain or IP: ${COLOR_RESET}"
+        read host_or_ip
 
-    print_success "Host or IP $host_or_ip and its IP(s) blocked successfully!"
+        # Exit the loop if the user presses Enter without typing anything
+        if [ -z "$host_or_ip" ]; then
+            print_success "No more domains or IPs to add. Returning to the menu."
+            break
+        fi
+
+        # Check if it's an IP or a domain
+        if [[ "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            # It's an IP address, use it directly
+            ips="$host_or_ip"
+        else
+            # Resolve the domain to IP(s)
+            ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
+        fi
+
+        # If no IPs are resolved, skip this domain
+        if [ -z "$ips" ]; then
+            print_error "Failed to resolve $host_or_ip to IP addresses."
+            continue
+        fi
+
+        # Block the IPs in iptables
+        for ip in $ips; do
+            sudo iptables -A INPUT -d "$ip" -j DROP
+            sudo iptables -A FORWARD -d "$ip" -j DROP
+            sudo iptables -A OUTPUT -d "$ip" -j DROP
+            sudo iptables -I DOCKER-USER -d "$ip" -j DROP
+            print_success "$ip has been blocked successfully."
+
+            # Add domain/IP to the tracker files (if not already present)
+            if ! grep -q "$host_or_ip" "$TRACKERS_FILE" && ! grep -q "$host_or_ip" "$HOSTS_TRACKERS_FILE"; then
+                echo "$host_or_ip" | sudo tee -a "$TRACKERS_FILE" > /dev/null
+                echo "$host_or_ip" | sudo tee -a "$HOSTS_TRACKERS_FILE" > /dev/null
+                print_success "$host_or_ip has been added to the blocklist."
+            else
+                print_error "$host_or_ip is already in the blocklist, skipping."
+            fi
+        done
+    done
+}
+
+# Function to remove multiple hosts (domains or IPs) from blocklist
+remove_multiple_hosts() {
+    echo -e "${COLOR_INPUT}Enter domains or IPs to remove from the blocklist (press Enter without input to stop):${COLOR_RESET}"
+
+    while true; do
+        # Prompt for user input
+        echo -n -e "${COLOR_INPUT}Enter domain or IP to remove: ${COLOR_RESET}"
+        read host_or_ip
+
+        # Exit the loop if the user presses Enter without typing anything
+        if [ -z "$host_or_ip" ]; then
+            print_success "No more domains or IPs to remove. Returning to the menu."
+            break
+        fi
+
+        # Check if it's an IP or a domain
+        if [[ "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            # It's an IP address, use it directly
+            ips="$host_or_ip"
+        else
+            # Resolve the domain to IP(s)
+            ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
+        fi
+
+        # If no IPs are resolved, skip this domain
+        if [ -z "$ips" ]; then
+            print_error "Failed to resolve $host_or_ip to IP addresses."
+            continue
+        fi
+
+        # Remove the IPs from iptables
+        for ip in $ips; do
+            sudo iptables -D INPUT -d "$ip" -j DROP
+            sudo iptables -D FORWARD -d "$ip" -j DROP
+            sudo iptables -D OUTPUT -d "$ip" -j DROP
+            sudo iptables -D DOCKER-USER -d "$ip" -j DROP
+            print_success "$ip has been unblocked successfully."
+
+            # Remove the domain/IP from the tracker files
+            sudo sed -i "/$host_or_ip/d" "$TRACKERS_FILE"
+            sudo sed -i "/$host_or_ip/d" "$HOSTS_TRACKERS_FILE"
+            print_success "$host_or_ip has been removed from the blocklist."
+        done
+    done
 }
 
 # Main Menu
