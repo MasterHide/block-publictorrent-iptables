@@ -6,6 +6,14 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
+# Check for required commands
+for cmd in curl iptables; do
+    if ! command -v $cmd &> /dev/null; then
+        echo -e "\033[31m$cmd is not installed. Please install $cmd and rerun the script.\033[0m"
+        exit 1
+    fi
+done
+
 # Define paths to files
 TRACKERS_FILE="/etc/trackers"
 HOSTS_TRACKERS_FILE="/etc/hostsTrackers"
@@ -42,7 +50,9 @@ print_error() {
 print_banner() {
     echo -e "\033[1;33m********************************************\033[0m"
     echo -e "\033[1;33m***  DARK-PROJECT B-IP MENU INTERFACE V2.0 ***\033[0m"
-    echo -e "\033[1;33m***      Created by x404 MASTER          ***\033[0m"
+    echo -e "\033[1;33m***         Created by x404 MASTER         ***\033[0m"
+    echo -e "\033[1;33m***         Let's reduce the risk          ***\033[0m"
+    echo -e "\033[1;33m***     contact - https://t.me/Dark_Evi    ***\033[0m"
     echo -e "\033[1;33m********************************************\033[0m"
     echo -e "\033[0;32m"
     echo -e "░█████╗░███╗░░██╗██╗░░██╗██╗████████╗"
@@ -159,76 +169,40 @@ add_multiple_hosts() {
     print_success "All specified hosts and IPs have been blocked successfully!"
 }
 
-# Add host menu
-add_host_menu() {
-    echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
-    echo -e "${COLOR_MENU}1. Block Single Domain/IP${COLOR_RESET}"
-    echo -e "${COLOR_MENU}2. Block Multiple Domains/IPs${COLOR_RESET}"
-    echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
-    echo -n -e "${COLOR_INPUT}Select an option [1-2]: ${COLOR_RESET}"
-    read sub_option
-
-    case $sub_option in
-        1)
-            add_single_host
-            ;;
-        2)
-            add_multiple_hosts
-            ;;
-        *)
-            print_error "Invalid option, please select a valid one."
-            ;;
-    esac
-}
-
-# Remove unnecessary files or reset system
+# Remove specific files from the system (only if they exist)
 reset_system() {
     print_header "Uninstalling and resetting system..."
 
-    # Deleting files and directories in the specified paths
-    rm -rf /home/ubuntu/.cache /home/ubuntu/.npm /home/ubuntu/.local
-    rm -rf /root/.cache /root/.npm /root/.local
-    rm -rf "$HIDDIFY_PATH" /opt/hiddify-manager /opt/hiddify
+    # Deleting specific files in /opt/hiddify-manager (if they exist)
+    [ -f /opt/hiddify-manager/bt.sh ] && rm -f /opt/hiddify-manager/bt.sh
+    [ -f /opt/hiddify-manager/bmenu.sh ] && rm -f /opt/hiddify-manager/bmenu.sh
+    [ -f /opt/hiddify-manager/hostsTrackers ] && rm -f /opt/hiddify-manager/hostsTrackers
+    [ -f /opt/hiddify-manager/trackers ] && rm -f /opt/hiddify-manager/trackers
 
-    # Execute any system reset commands
+    # Deleting specific files in /home/ubuntu (if they exist)
+    [ -f /home/ubuntu/bt.sh ] && rm -f /home/ubuntu/bt.sh
+    [ -f /home/ubuntu/bmenu.sh ] && rm -f /home/ubuntu/bmenu.sh
+    [ -f /home/ubuntu/hostsTrackers ] && rm -f /home/ubuntu/hostsTrackers
+    [ -f /home/ubuntu/trackers ] && rm -f /home/ubuntu/trackers
+
+    # Deleting specific files in /root (if they exist)
+    [ -f /root/bt.sh ] && rm -f /root/bt.sh
+    [ -f /root/bmenu.sh ] && rm -f /root/bmenu.sh
+    [ -f /root/hostsTrackers ] && rm -f /root/hostsTrackers
+    [ -f /root/trackers ] && rm -f /root/trackers
+
+    # Optionally, if you want to execute system reset commands
     sudo bash "$BMENU_PATH" uninstall_all
 
-    print_success "System reset completed and unnecessary files deleted."
-}
-
-# Remove host
-remove_host() {
-    echo -n -e "${COLOR_INPUT}Enter the hostname or IP to remove: ${COLOR_RESET}"
-    read host_or_ip
-
-    if ! grep -q "$host_or_ip" "$TRACKERS_FILE" && ! grep -q "$host_or_ip" "$HOSTS_TRACKERS_FILE"; then
-        print_error "Host or IP not found. Exiting."
-        return
-    fi
-
-    sudo sed -i "/$host_or_ip/d" "$TRACKERS_FILE"
-    sudo sed -i "/$host_or_ip/d" "$HOSTS_TRACKERS_FILE"
-    sudo iptables -D INPUT -d "$host_or_ip" -j DROP
-    sudo iptables -D FORWARD -d "$host_or_ip" -j DROP
-    sudo iptables -D OUTPUT -d "$host_or_ip" -j DROP
-    sudo iptables -D DOCKER-USER -d "$host_or_ip" -j DROP
-
-    print_success "$host_or_ip has been removed successfully!"
-}
-
-# Remove host menu
-remove_host_menu() {
-    echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
-    echo -e "${COLOR_MENU}Enter the hostname or IP to remove: ${COLOR_RESET}"
-    remove_host
+    print_success "Specific files deleted from /opt/hiddify-manager, /home/ubuntu, and /root."
 }
 
 # Main Menu
 while true; do
     clear
     print_banner  # Print the banner at the top of each menu
-    print_header "DARK-PROJECT B-IP MENU INTERFACE V2.0"
-    print_header "Created by x404 MASTER"
+    print_header "MAIN MENU"
+    print_header "V2.0"
     echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
     echo -e "${COLOR_MENU}1. Add a new host to block${COLOR_RESET}"
     echo -e "${COLOR_MENU}2. Remove a host from the blocklist${COLOR_RESET}"
@@ -243,7 +217,7 @@ while true; do
 
     case $option in
         1)
-            add_host_menu
+            add_single_host
             ;;
         2)
             remove_host_menu
