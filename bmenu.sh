@@ -137,11 +137,19 @@ add_single_host() {
 
     # Block the IPs in iptables
     for ip in $ips; do
-        sudo iptables -A INPUT -d "$ip" -j DROP
-        sudo iptables -A FORWARD -d "$ip" -j DROP
-        sudo iptables -A OUTPUT -d "$ip" -j DROP
-        sudo iptables -I DOCKER-USER -d "$ip" -j DROP
-        print_success "$ip has been blocked successfully."
+        # Check if the rule already exists in iptables before adding it
+        if ! sudo iptables -C INPUT -d "$ip" -j DROP &>/dev/null && \
+           ! sudo iptables -C FORWARD -d "$ip" -j DROP &>/dev/null && \
+           ! sudo iptables -C OUTPUT -d "$ip" -j DROP &>/dev/null && \
+           ! sudo iptables -C DOCKER-USER -d "$ip" -j DROP &>/dev/null; then
+            sudo iptables -A INPUT -d "$ip" -j DROP
+            sudo iptables -A FORWARD -d "$ip" -j DROP
+            sudo iptables -A OUTPUT -d "$ip" -j DROP
+            sudo iptables -I DOCKER-USER -d "$ip" -j DROP
+            print_success "$ip has been blocked successfully."
+        else
+            print_error "$ip is already blocked, skipping."
+        fi
 
         # Add domain/IP to the tracker files (if not already present)
         if ! grep -q "$host_or_ip" "$TRACKERS_FILE" && ! grep -q "$host_or_ip" "$HOSTS_TRACKERS_FILE"; then
@@ -186,11 +194,19 @@ add_multiple_hosts() {
 
         # Block the IPs in iptables
         for ip in $ips; do
-            sudo iptables -A INPUT -d "$ip" -j DROP
-            sudo iptables -A FORWARD -d "$ip" -j DROP
-            sudo iptables -A OUTPUT -d "$ip" -j DROP
-            sudo iptables -I DOCKER-USER -d "$ip" -j DROP
-            print_success "$ip has been blocked successfully."
+            # Check if the rule already exists in iptables before adding it
+            if ! sudo iptables -C INPUT -d "$ip" -j DROP &>/dev/null && \
+               ! sudo iptables -C FORWARD -d "$ip" -j DROP &>/dev/null && \
+               ! sudo iptables -C OUTPUT -d "$ip" -j DROP &>/dev/null && \
+               ! sudo iptables -C DOCKER-USER -d "$ip" -j DROP &>/dev/null; then
+                sudo iptables -A INPUT -d "$ip" -j DROP
+                sudo iptables -A FORWARD -d "$ip" -j DROP
+                sudo iptables -A OUTPUT -d "$ip" -j DROP
+                sudo iptables -I DOCKER-USER -d "$ip" -j DROP
+                print_success "$ip has been blocked successfully."
+            else
+                print_error "$ip is already blocked, skipping."
+            fi
 
             # Add domain/IP to the tracker files (if not already present)
             if ! grep -q "$host_or_ip" "$TRACKERS_FILE" && ! grep -q "$host_or_ip" "$HOSTS_TRACKERS_FILE"; then
@@ -201,6 +217,47 @@ add_multiple_hosts() {
                 print_error "$host_or_ip is already in the blocklist, skipping."
             fi
         done
+    done
+}
+
+# Function to remove a single host (domain or IP) from the blocklist
+remove_single_host() {
+    echo -e "${COLOR_INPUT}Enter domain or IP to remove from the blocklist: ${COLOR_RESET}"
+    read host_or_ip
+
+    # Check if it's empty
+    if [ -z "$host_or_ip" ]; then
+        print_error "No domain or IP provided. Returning to the menu."
+        return
+    fi
+
+    # Check if it's an IP or a domain
+    if [[ "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        # It's an IP address, use it directly
+        ips="$host_or_ip"
+    else
+        # Resolve the domain to IP(s)
+        ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
+    fi
+
+    # If no IPs are resolved, skip this domain
+    if [ -z "$ips" ]; then
+        print_error "Failed to resolve $host_or_ip to IP addresses."
+        return
+    fi
+
+    # Remove the IPs from iptables
+    for ip in $ips; do
+        sudo iptables -D INPUT -d "$ip" -j DROP
+        sudo iptables -D FORWARD -d "$ip" -j DROP
+        sudo iptables -D OUTPUT -d "$ip" -j DROP
+        sudo iptables -D DOCKER-USER -d "$ip" -j DROP
+        print_success "$ip has been unblocked successfully."
+
+        # Remove the domain/IP from the tracker files
+        sudo sed -i "/$host_or_ip/d" "$TRACKERS_FILE"
+        sudo sed -i "/$host_or_ip/d" "$HOSTS_TRACKERS_FILE"
+        print_success "$host_or_ip has been removed from the blocklist."
     done
 }
 
