@@ -307,40 +307,44 @@ done
 done
 }
 
-# Function to check current block status (Active/Not Active)
-check_block_status() {
-# Check if the tracker files exist
-if [ ! -f "$TRACKERS_FILE" ] || [ ! -f "$HOSTS_TRACKERS_FILE" ]; then
-print_error "Blocklist files do not exist or are empty."
+# Function to check if a specific host (domain or IP) is blocked (Active/Not Active)
+check_specific_host_status() {
+echo -e "${COLOR_INPUT}Enter domain or IP to check if it's blocked: ${COLOR_RESET}"
+read host_or_ip
+
+# Check if input is empty
+if [ -z "$host_or_ip" ]; then
+print_error "No domain or IP provided. Returning to the menu."
 return
 fi
 
-# Print the header
-print_header "Current Block Status"
-
-# Display headers
-echo -e "-----------------------------------------------"
-echo -e "Host/IP Status "
-echo -e "-----------------------------------------------"
-
-# Loop through each host in the tracker files and check if it's blocked
-for file in "$TRACKERS_FILE" "$HOSTS_TRACKERS_FILE"; do
-if [ -f "$file" ]; then
-while IFS= read -r host; do
-# Check if the host is currently blocked in iptables
-if sudo iptables -C INPUT -d "$host" -j DROP &>/dev/null || \
-sudo iptables -C FORWARD -d "$host" -j DROP &>/dev/null || \
-sudo iptables -C OUTPUT -d "$host" -j DROP &>/dev/null || \
-sudo iptables -C DOCKER-USER -d "$host" -j DROP &>/dev/null; then
-echo -e "$host - Blocked - Active"
+# Check if it's an IP or domain
+if [[ "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+# It's an IP address, use it directly
+ips="$host_or_ip"
 else
-echo -e "$host - Blocked - Not Active"
+# Resolve the domain to IP(s)
+ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
 fi
-done < "$file"
+
+# If no IPs are resolved, skip this domain
+if [ -z "$ips" ]; then
+print_error "Failed to resolve $host_or_ip to IP addresses."
+return
+fi
+
+# Check if the IP is blocked
+for ip in $ips; do
+# Check if the IP is blocked in iptables
+if sudo iptables -C INPUT -d "$ip" -j DROP &>/dev/null || \
+sudo iptables -C FORWARD -d "$ip" -j DROP &>/dev/null || \
+sudo iptables -C OUTPUT -d "$ip" -j DROP &>/dev/null || \
+sudo iptables -C DOCKER-USER -d "$ip" -j DROP &>/dev/null; then
+echo -e "$ip - Blocked - Active"
+else
+echo -e "$ip - Blocked - Not Active"
 fi
 done
-
-echo -e "-----------------------------------------------"
 }
 
 # Main Menu
@@ -424,12 +428,16 @@ print_error "Invalid option, please choose a valid option."
 esac
 done
 ;;
+
 3)
-# View current blocked hosts
-check_block_status # Call the function to check the block status
+print_header "Blocked Hosts"
+echo "--------------------------------"
+cat "$TRACKERS_FILE"
+echo "--------------------------------"
 echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
 read -n 1
 ;;
+
 4)
 print_header "Running cleanup script..."
 sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/cleanup_hosts.sh)"
