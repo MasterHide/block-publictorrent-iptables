@@ -307,6 +307,42 @@ done
 done
 }
 
+# Function to check current block status (Active/Not Active)
+check_block_status() {
+# Check if the tracker files exist
+if [ ! -f "$TRACKERS_FILE" ] || [ ! -f "$HOSTS_TRACKERS_FILE" ]; then
+print_error "Blocklist files do not exist or are empty."
+return
+fi
+
+# Print the header
+print_header "Current Block Status"
+
+# Display headers
+echo -e "-----------------------------------------------"
+echo -e "Host/IP Status "
+echo -e "-----------------------------------------------"
+
+# Loop through each host in the tracker files and check if it's blocked
+for file in "$TRACKERS_FILE" "$HOSTS_TRACKERS_FILE"; do
+if [ -f "$file" ]; then
+while IFS= read -r host; do
+# Check if the host is currently blocked in iptables
+if sudo iptables -C INPUT -d "$host" -j DROP &>/dev/null || \
+sudo iptables -C FORWARD -d "$host" -j DROP &>/dev/null || \
+sudo iptables -C OUTPUT -d "$host" -j DROP &>/dev/null || \
+sudo iptables -C DOCKER-USER -d "$host" -j DROP &>/dev/null; then
+echo -e "$host - Blocked - Active"
+else
+echo -e "$host - Blocked - Not Active"
+fi
+done < "$file"
+fi
+done
+
+echo -e "-----------------------------------------------"
+}
+
 # Main Menu
 while true; do
 clear
@@ -389,10 +425,8 @@ esac
 done
 ;;
 3)
-print_header "Blocked Hosts"
-echo "--------------------------------"
-cat "$TRACKERS_FILE"
-echo "--------------------------------"
+# View current blocked hosts
+check_block_status # Call the function to check the block status
 echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
 read -n 1
 ;;
