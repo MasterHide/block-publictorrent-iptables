@@ -360,9 +360,10 @@ echo -e "${COLOR_MENU}3. View current blocked hosts${COLOR_RESET}"
 echo -e "${COLOR_MENU}4. Clean up hosts file list and remove unnecessary files${COLOR_RESET}"
 echo -e "${COLOR_MENU}5. Install or Update${COLOR_RESET}"
 echo -e "${COLOR_MENU}6. Uninstall all and reset system${COLOR_RESET}"
-echo -e "${COLOR_MENU}7. Exit${COLOR_RESET}"
+echo -e "${COLOR_MENU}7. Check if a specific host (domain/IP) is blocked${COLOR_RESET}"
+echo -e "${COLOR_MENU}8. Exit${COLOR_RESET}"
 echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
-echo -n -e "${COLOR_INPUT}Select an option [1-7]: ${COLOR_RESET}"
+echo -n -e "${COLOR_INPUT}Select an option [1-8]: ${COLOR_RESET}"
 read option
 
 case $option in
@@ -380,20 +381,10 @@ echo -n -e "${COLOR_INPUT}Select an option [1-3]: ${COLOR_RESET}"
 read submenu_option
 
 case $submenu_option in
-1)
-add_single_host
-break
-;;
-2)
-add_multiple_hosts
-break
-;;
-3)
-break
-;;
-*)
-print_error "Invalid option, please choose a valid option."
-;;
+1) add_single_host; break ;;
+2) add_multiple_hosts; break ;;
+3) break ;;
+*) print_error "Invalid option, please choose a valid option." ;;
 esac
 done
 ;;
@@ -411,20 +402,10 @@ echo -n -e "${COLOR_INPUT}Select an option [1-3]: ${COLOR_RESET}"
 read submenu_option
 
 case $submenu_option in
-1)
-remove_single_host
-break
-;;
-2)
-remove_multiple_hosts
-break
-;;
-3)
-break
-;;
-*)
-print_error "Invalid option, please choose a valid option."
-;;
+1) remove_single_host; break ;;
+2) remove_multiple_hosts; break ;;
+3) break ;;
+*) print_error "Invalid option, please choose a valid option." ;;
 esac
 done
 ;;
@@ -456,8 +437,15 @@ fi
 6)
 reset_system
 ;;
+
 7)
-print_success "Exiting. Goodbye Adarei umma!"
+# Check if a specific host (domain/IP) is blocked
+check_specific_host_status
+echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
+read -n 1
+;;
+8)
+print_success "Exiting. Goodbye!"
 exit 0
 ;;
 *)
