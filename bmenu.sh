@@ -309,42 +309,46 @@ done
 
 # Function to check if a specific host (domain or IP) is blocked (Active/Not Active)
 check_specific_host_status() {
-echo -e "${COLOR_INPUT}Enter domain or IP to check if it's blocked: ${COLOR_RESET}"
-read host_or_ip
+    echo -e "${COLOR_INPUT}Enter domain or IP to check if it's blocked: ${COLOR_RESET}"
+    read host_or_ip
 
-# Check if input is empty
-if [ -z "$host_or_ip" ]; then
-print_error "No domain or IP provided. Returning to the menu."
-return
-fi
+    # Check if input is empty
+    if [ -z "$host_or_ip" ]; then
+        print_error "No domain or IP provided. Returning to the menu."
+        return
+    fi
 
-# Check if it's an IP or domain
-if [[ "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-# It's an IP address, use it directly
-ips="$host_or_ip"
-else
-# Resolve the domain to IP(s)
-ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
-fi
+    # Check if it's an IP or domain
+    if [[ "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ || "$host_or_ip" =~ ^[0-9a-fA-F:]+$ ]]; then
+        # It's either an IPv4 or IPv6 address, use it directly
+        ips="$host_or_ip"
+    else
+        # Resolve the domain to IP(s)
+        ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
+    fi
 
-# If no IPs are resolved, skip this domain
-if [ -z "$ips" ]; then
-print_error "Failed to resolve $host_or_ip to IP addresses."
-return
-fi
+    # If no IPs are resolved, skip this domain
+    if [ -z "$ips" ]; then
+        print_error "Failed to resolve $host_or_ip to IP addresses."
+        return
+    fi
 
-# Check if the IP is blocked
-for ip in $ips; do
-# Check if the IP is blocked in iptables
-if sudo iptables -C INPUT -d "$ip" -j DROP &>/dev/null || \
-sudo iptables -C FORWARD -d "$ip" -j DROP &>/dev/null || \
-sudo iptables -C OUTPUT -d "$ip" -j DROP &>/dev/null || \
-sudo iptables -C DOCKER-USER -d "$ip" -j DROP &>/dev/null; then
-echo -e "$ip - Blocked - Active"
-else
-echo -e "$ip - Blocked - Not Active"
-fi
-done
+    # Check if the IP is blocked
+    for ip in $ips; do
+        # Check if the IP is blocked in iptables
+        if sudo iptables -C INPUT -d "$ip" -j DROP &>/dev/null || \
+           sudo iptables -C FORWARD -d "$ip" -j DROP &>/dev/null || \
+           sudo iptables -C OUTPUT -d "$ip" -j DROP &>/dev/null || \
+           sudo iptables -C DOCKER-USER -d "$ip" -j DROP &>/dev/null || \
+           sudo ip6tables -C INPUT -d "$ip" -j DROP &>/dev/null || \
+           sudo ip6tables -C FORWARD -d "$ip" -j DROP &>/dev/null || \
+           sudo ip6tables -C OUTPUT -d "$ip" -j DROP &>/dev/null || \
+           sudo ip6tables -C DOCKER-USER -d "$ip" -j DROP &>/dev/null; then
+            echo -e "$ip - Blocked - Active"
+        else
+            echo -e "$ip - Not Blocked - Not Active"
+        fi
+    done
 }
 
 # Main Menu
