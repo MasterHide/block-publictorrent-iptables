@@ -93,15 +93,25 @@ chmod +x /etc/cron.daily/denypublic
 
 print_success "Blocking public trackers setup completed successfully."
 
-# Automatically run bmenu.sh from any valid path
+# Install bmenu globally
 for path in "${INSTALL_PATHS[@]}"; do
-    bmenu_path="$path/bmenu.sh"
-    if [ -f "$bmenu_path" ]; then
-        print_success "Starting menu interface from $bmenu_path..."
-        chmod +x "$bmenu_path"
-        "$bmenu_path"
+    if [ -f "$path/bmenu.sh" ]; then
+        print_success "Found bmenu.sh in $path, installing globally..."
+        
+        # Copy the script to /usr/local/bin (global location)
+        sudo cp "$path/bmenu.sh" /usr/local/bin/bmenu
+        
+        # Ensure it is executable by all users
+        sudo chmod +x /usr/local/bin/bmenu
+        
+        # Set correct ownership for all users (optional)
+        sudo chown root:root /usr/local/bin/bmenu
+        
+        print_success "bmenu command is now available globally to all users."
         exit 0
     fi
 done
 
-print_error "Failed to find bmenu.sh in any of the expected paths."
+# If no bmenu.sh was found in the defined paths
+print_error "bmenu.sh not found in any of the defined installation paths."
+exit 1
