@@ -1,4 +1,4 @@
- #!/bin/bash
+#!/bin/bash
 
 # Ensure the script is run as root
 if [ "$(id -u)" -ne 0 ]; then
@@ -67,6 +67,7 @@ echo -e "\033[0m"
 # Function to reset the system by deleting specific files
 reset_system() {
 print_header "Uninstalling and resetting system..."
+
 # Confirm before proceeding with deletion
 echo -e "${COLOR_WARNING}WARNING: This will delete the following files if they exist: bmenu.sh, bt.sh, and hostsTrackers. Do you want to continue? (yes/no): ${COLOR_RESET}"
 read confirm
@@ -108,85 +109,205 @@ done
 print_success "Specific files deletion process completed."
 }
 
-# Function to add multiple hosts
-add_multiple_hosts() {
-while true; do
-echo -e "${COLOR_INPUT}Enter a domain or IP to block (or type 'done' to finish): ${COLOR_RESET}"
-read host_to_block
+# Function to add a single host to blocklist
+add_single_host() {
+echo -e "${COLOR_INPUT}Enter domain or IP to block: ${COLOR_RESET}"
+read host_or_ip
 
-if [ "$host_to_block" == "done" ]; then
-print_success "Finished adding hosts."
-break
+# Check if the input is empty
+if [ -z "$host_or_ip" ]; then
+print_error "No domain or IP entered. Returning to the menu."
+return
 fi
 
-if [ -z "$host_to_block" ]; then
-print_error "No host provided. Skipping."
-continue
-fi
-
-# Check if it's a domain or an IP
-if [[ "$host_to_block" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ || "$host_to_block" =~ ^[0-9a-fA-F:]+$ ]]; then
-# It's an IP, proceed directly
-ips="$host_to_block"
+# Check if it's an IP or a domain
+if [[ "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+# It's an IP address, use it directly
+ips="$host_or_ip"
 else
 # Resolve the domain to IP(s)
-ips=$(getent ahosts "$host_to_block" | awk '{print $1}' | sort -u)
+ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
 fi
 
 # If no IPs are resolved, skip this domain
 if [ -z "$ips" ]; then
-print_error "Failed to resolve $host_to_block to IP addresses."
-continue
+print_error "Failed to resolve $host_or_ip to IP addresses."
+return
 fi
 
-# Add the IPs to the blocklist file
-echo "$host_to_block" >> "$TRACKERS_FILE"
-
-# Add the IPs to iptables
+# Block the IPs in iptables
 for ip in $ips; do
-sudo iptables -A INPUT -d "$ip" -j DROP
-sudo iptables -A FORWARD -d "$ip" -j DROP
-sudo iptables -A OUTPUT -d "$ip" -j DROP
-done
+# Check if the rule already exists in iptables before adding it
+if ! iptables -C INPUT -d "$ip" -j DROP &>/dev/null && \
+! iptables -C FORWARD -d "$ip" -j DROP &>/dev/null && \
+! iptables -C OUTPUT -d "$ip" -j DROP &>/dev/null && \
+! iptables -C DOCKER-USER -d "$ip" -j DROP &>/dev/null; then
+iptables -A INPUT -d "$ip" -j DROP
+iptables -A FORWARD -d "$ip" -j DROP
+iptables -A OUTPUT -d "$ip" -j DROP
+iptables -I DOCKER-USER -d "$ip" -j DROP
+print_success "$ip has been blocked successfully."
+else
+print_error "$ip is already blocked, skipping."
+fi
 
-print_success "$host_to_block added to blocklist."
+# Add domain/IP to the tracker files (if not already present)
+if ! grep -q "$host_or_ip" "$TRACKERS_FILE" && ! grep -q "$host_or_ip" "$HOSTS_TRACKERS_FILE"; then
+echo "$host_or_ip" | tee -a "$TRACKERS_FILE" > /dev/null
+echo "$host_or_ip" | tee -a "$HOSTS_TRACKERS_FILE" > /dev/null
+print_success "$host_or_ip has been added to the blocklist."
+else
+print_error "$host_or_ip is already in the blocklist, skipping."
+fi
 done
 }
 
-# Function to remove multiple hosts
-remove_multiple_hosts() {
-while true; do
-echo -e "${COLOR_INPUT}Enter a domain or IP to remove from blocklist (or type 'done' to finish): ${COLOR_RESET}"
-read host_to_remove
+# Function to add multiple hosts (domains or IPs) to blocklist
+add_multiple_hosts() {
+echo -e "${COLOR_INPUT}Enter domains or IPs to block (press Enter without input to stop):${COLOR_RESET}"
 
-if [ "$host_to_remove" == "done" ]; then
-print_success "Finished removing hosts."
+while true; do
+# Prompt for user input
+echo -n -e "${COLOR_INPUT}Enter domain or IP: ${COLOR_RESET}"
+read host_or_ip
+
+# Exit the loop if the user presses Enter without typing anything
+if [ -z "$host_or_ip" ]; then
+print_success "No more domains or IPs to add. Returning to the menu."
 break
 fi
 
-if [ -z "$host_to_remove" ]; then
-print_error "No host provided. Skipping."
+# Check if it's an IP or a domain
+if [[ "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+# It's an IP address, use it directly
+ips="$host_or_ip"
+else
+# Resolve the domain to IP(s)
+ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
+fi
+
+# If no IPs are resolved, skip this domain
+if [ -z "$ips" ]; then
+print_error "Failed to resolve $host_or_ip to IP addresses."
 continue
 fi
 
-# Remove the host from the blocklist file
-sed -i "/$host_to_remove/d" "$TRACKERS_FILE"
+# Block the IPs in iptables
+for ip in $ips; do
+# Check if the rule already exists in iptables before adding it
+if ! sudo iptables -C INPUT -d "$ip" -j DROP &>/dev/null && \
+! sudo iptables -C FORWARD -d "$ip" -j DROP &>/dev/null && \
+! sudo iptables -C OUTPUT -d "$ip" -j DROP &>/dev/null && \
+! sudo iptables -C DOCKER-USER -d "$ip" -j DROP &>/dev/null; then
+sudo iptables -A INPUT -d "$ip" -j DROP
+sudo iptables -A FORWARD -d "$ip" -j DROP
+sudo iptables -A OUTPUT -d "$ip" -j DROP
+sudo iptables -I DOCKER-USER -d "$ip" -j DROP
+print_success "$ip has been blocked successfully."
+else
+print_error "$ip is already blocked, skipping."
+fi
 
+# Add domain/IP to the tracker files (if not already present)
+if ! grep -q "$host_or_ip" "$TRACKERS_FILE" && ! grep -q "$host_or_ip" "$HOSTS_TRACKERS_FILE"; then
+echo "$host_or_ip" | sudo tee -a "$TRACKERS_FILE" > /dev/null
+echo "$host_or_ip" | sudo tee -a "$HOSTS_TRACKERS_FILE" > /dev/null
+print_success "$host_or_ip has been added to the blocklist."
+else
+print_error "$host_or_ip is already in the blocklist, skipping."
+fi
+done
+done
+}
+
+# Function to remove a single host (domain or IP) from the blocklist
+remove_single_host() {
+echo -e "${COLOR_INPUT}Enter domain or IP to remove from the blocklist: ${COLOR_RESET}"
+read host_or_ip
+
+# Check if it's empty
+if [ -z "$host_or_ip" ]; then
+print_error "No domain or IP provided. Returning to the menu."
+return
+fi
+
+# Check if it's an IP or a domain
+if [[ "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+# It's an IP address, use it directly
+ips="$host_or_ip"
+else
 # Resolve the domain to IP(s)
-ips=$(getent ahosts "$host_to_remove" | awk '{print $1}' | sort -u)
+ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
+fi
 
-# Remove iptables rules
+# If no IPs are resolved, skip this domain
+if [ -z "$ips" ]; then
+print_error "Failed to resolve $host_or_ip to IP addresses."
+return
+fi
+
+# Remove the IPs from iptables
 for ip in $ips; do
 sudo iptables -D INPUT -d "$ip" -j DROP
 sudo iptables -D FORWARD -d "$ip" -j DROP
 sudo iptables -D OUTPUT -d "$ip" -j DROP
-done
+sudo iptables -D DOCKER-USER -d "$ip" -j DROP
+print_success "$ip has been unblocked successfully."
 
-print_success "$host_to_remove removed from blocklist."
+# Remove the domain/IP from the tracker files
+sudo sed -i "/$host_or_ip/d" "$TRACKERS_FILE"
+sudo sed -i "/$host_or_ip/d" "$HOSTS_TRACKERS_FILE"
+print_success "$host_or_ip has been removed from the blocklist."
 done
 }
 
-# Function to check if a specific host (domain or IP) is blocked
+# Function to remove multiple hosts (domains or IPs) from blocklist
+remove_multiple_hosts() {
+echo -e "${COLOR_INPUT}Enter domains or IPs to remove from the blocklist (press Enter without input to stop):${COLOR_RESET}"
+
+while true; do
+# Prompt for user input
+echo -n -e "${COLOR_INPUT}Enter domain or IP to remove: ${COLOR_RESET}"
+read host_or_ip
+
+# Exit the loop if the user presses Enter without typing anything
+if [ -z "$host_or_ip" ]; then
+print_success "No more domains or IPs to remove. Returning to the menu."
+break
+fi
+
+# Check if it's an IP or a domain
+if [[ "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+# It's an IP address, use it directly
+ips="$host_or_ip"
+else
+# Resolve the domain to IP(s)
+ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
+fi
+
+# If no IPs are resolved, skip this domain
+if [ -z "$ips" ]; then
+print_error "Failed to resolve $host_or_ip to IP addresses."
+continue
+fi
+
+# Remove the IPs from iptables
+for ip in $ips; do
+sudo iptables -D INPUT -d "$ip" -j DROP
+sudo iptables -D FORWARD -d "$ip" -j DROP
+sudo iptables -D OUTPUT -d "$ip" -j DROP
+sudo iptables -D DOCKER-USER -d "$ip" -j DROP
+print_success "$ip has been unblocked successfully."
+
+# Remove the domain/IP from the tracker files
+sudo sed -i "/$host_or_ip/d" "$TRACKERS_FILE"
+sudo sed -i "/$host_or_ip/d" "$HOSTS_TRACKERS_FILE"
+print_success "$host_or_ip has been removed from the blocklist."
+done
+done
+}
+
+# Function to check if a specific host (domain or IP) is blocked (Active/Not Active)
 check_specific_host_status() {
 echo -e "${COLOR_INPUT}Enter domain or IP to check if it's blocked: ${COLOR_RESET}"
 read host_or_ip
@@ -239,37 +360,75 @@ print_header "V2.5"
 echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
 echo -e "${COLOR_MENU}1. Add a new host to block${COLOR_RESET}"
 echo -e "${COLOR_MENU}2. Remove a host from the blocklist${COLOR_RESET}"
-echo -e "${COLOR_MENU}3. Add multiple hosts to block${COLOR_RESET}"
-echo -e "${COLOR_MENU}4. Remove multiple hosts from blocklist${COLOR_RESET}"
-echo -e "${COLOR_MENU}5. View current blocked hosts${COLOR_RESET}"
-echo -e "${COLOR_MENU}6. Clean up hosts file list and remove unnecessary files${COLOR_RESET}"
-echo -e "${COLOR_MENU}7. Install or Update${COLOR_RESET}"
-echo -e "${COLOR_MENU}8. Uninstall all and reset system${COLOR_RESET}"
-echo -e "${COLOR_MENU}9. Check if a specific host (domain/IP) is blocked${COLOR_RESET}"
-echo -e "${COLOR_MENU}10. Exit${COLOR_RESET}"
+echo -e "${COLOR_MENU}3. View current blocked hosts${COLOR_RESET}"
+echo -e "${COLOR_MENU}4. Clean up hosts file list and remove unnecessary files${COLOR_RESET}"
+echo -e "${COLOR_MENU}5. Install or Update${COLOR_RESET}"
+echo -e "${COLOR_MENU}6. Uninstall all and reset system${COLOR_RESET}"
+echo -e "${COLOR_MENU}7. Check if a specific host (domain/IP) is blocked${COLOR_RESET}"
+echo -e "${COLOR_MENU}8. Exit${COLOR_RESET}"
 echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
-echo -n -e "${COLOR_INPUT}Select an option [1-10]: ${COLOR_RESET}"
+echo -n -e "${COLOR_INPUT}Select an option [1-8]: ${COLOR_RESET}"
 read option
 
 case $option in
+1)
+# Submenu for option 1
+while true; do
+clear
+print_header "Add a new host to block"
+echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
+echo -e "${COLOR_MENU}1. Add a single host${COLOR_RESET}"
+echo -e "${COLOR_MENU}2. Add multiple hosts${COLOR_RESET}"
+echo -e "${COLOR_MENU}3. Go back to main menu${COLOR_RESET}"
+echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
+echo -n -e "${COLOR_INPUT}Select an option [1-3]: ${COLOR_RESET}"
+read submenu_option
+
+case $submenu_option in
 1) add_single_host; break ;;
-2) remove_single_host; break ;;
-3) add_multiple_hosts; break ;;
-4) remove_multiple_hosts; break ;;
-5)
+2) add_multiple_hosts; break ;;
+3) break ;;
+*) print_error "Invalid option, please choose a valid option." ;;
+esac
+done
+;;
+2)
+# Submenu for option 2 (remove hosts)
+while true; do
+clear
+print_header "Remove a host from the blocklist"
+echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
+echo -e "${COLOR_MENU}1. Remove a single host${COLOR_RESET}"
+echo -e "${COLOR_MENU}2. Remove multiple hosts${COLOR_RESET}"
+echo -e "${COLOR_MENU}3. Go back to main menu${COLOR_RESET}"
+echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
+echo -n -e "${COLOR_INPUT}Select an option [1-3]: ${COLOR_RESET}"
+read submenu_option
+
+case $submenu_option in
+1) remove_single_host; break ;;
+2) remove_multiple_hosts; break ;;
+3) break ;;
+*) print_error "Invalid option, please choose a valid option." ;;
+esac
+done
+;;
+
+3)
 print_header "Blocked Hosts"
 echo "--------------------------------"
 cat "$TRACKERS_FILE"
 echo "--------------------------------"
 echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
 read -n 1
-break ;;
-6)
+;;
+
+4)
 print_header "Running cleanup script..."
 sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/cleanup_hosts.sh)"
 print_success "Cleanup completed."
-break ;;
-7)
+;;
+5)
 print_header "Installing or updating bmenu.sh script..."
 if [ -f "$BMENU_PATH" ]; then
 print_success "$BMENU_PATH already exists."
@@ -278,10 +437,21 @@ sudo wget -O "$BMENU_PATH" https://raw.githubusercontent.com/MasterHide/block-pu
 sudo chmod +x "$BMENU_PATH"
 print_success "bmenu.sh script installed/updated at $BMENU_PATH."
 fi
-break ;;
-8) reset_system; break ;;
-9) check_specific_host_status; break ;;
-10) print_success "Exiting. Goodbye!"; exit 0 ;;
+;;
+6)
+reset_system
+;;
+
+7)
+# Check if a specific host (domain/IP) is blocked
+check_specific_host_status
+echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
+read -n 1
+;;
+8)
+print_success "Exiting. Goodbye!"
+exit 0
+;;
 *)
 print_error "Invalid option, please choose a valid option."
 ;;
