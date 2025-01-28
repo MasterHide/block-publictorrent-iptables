@@ -415,12 +415,31 @@ done
 ;;
 
 3)
-print_header "Blocked Hosts"
-echo "--------------------------------"
+print_header "Currently Blocked Hosts"
+
+# Check if the tracker files exist and are readable
+if [ -f "$TRACKERS_FILE" ] && [ -s "$TRACKERS_FILE" ]; then
+echo -e "${COLOR_MENU}Blocked Hosts from $TRACKERS_FILE:${COLOR_RESET}"
 cat "$TRACKERS_FILE"
-echo "--------------------------------"
-echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
-read -n 1
+else
+print_warning "No hosts found in $TRACKERS_FILE."
+fi
+
+if [ -f "$HOSTS_TRACKERS_FILE" ] && [ -s "$HOSTS_TRACKERS_FILE" ]; then
+echo -e "${COLOR_MENU}Blocked Hosts from $HOSTS_TRACKERS_FILE:${COLOR_RESET}"
+cat "$HOSTS_TRACKERS_FILE"
+else
+print_warning "No hosts found in $HOSTS_TRACKERS_FILE."
+fi
+
+# Display IPs blocked in iptables
+echo -e "${COLOR_MENU}Blocked IPs in iptables:${COLOR_RESET}"
+iptables -L -n | grep 'DROP' | awk '{print $4}' | sort -u
+
+# Wait for user input to go back to menu
+echo -e "${COLOR_INPUT}Press Enter to return to the main menu...${COLOR_RESET}"
+read
+}
 ;;
 
 4)
