@@ -414,10 +414,30 @@ esac
 done
 ;;
 
-3)
+3) 
 print_header "Blocked Hosts"
 echo "--------------------------------"
-cat "$TRACKERS_FILE"
+
+# Display content from /etc/hosts
+echo "Blocked Entries from /etc/hosts:"
+echo "--------------------------------"
+if [ -s "/etc/hosts" ]; then
+    cat /etc/hosts
+else
+    echo "No entries found in /etc/hosts."
+fi
+
+echo "--------------------------------"
+
+# Display content from /etc/trackers
+echo "Blocked Trackers from /etc/trackers:"
+echo "--------------------------------"
+if [ -s "$TRACKERS_FILE" ]; then
+    cat "$TRACKERS_FILE"
+else
+    echo "No entries found in $TRACKERS_FILE."
+fi
+
 echo "--------------------------------"
 echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
 read -n 1
