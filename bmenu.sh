@@ -439,7 +439,6 @@ iptables -L -n | grep 'DROP' | awk '{print $4}' | sort -u
 # Wait for user input to go back to menu
 echo -e "${COLOR_INPUT}Press Enter to return to the main menu...${COLOR_RESET}"
 read
-}
 ;;
 
 4)
