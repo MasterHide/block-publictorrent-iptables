@@ -393,28 +393,81 @@ esac
 done
 ;;
 2)
+# Function to remove entries from /etc/hosts
+remove_from_hosts() {
+local host=$1
+if grep -q "$host" /etc/hosts; then
+sed -i "/$host/d" /etc/hosts
+echo "Removed $host from /etc/hosts."
+else
+echo "$host not found in /etc/hosts."
+fi
+}
+
+# Function to remove IP blocks from iptables
+unblock_ip() {
+local ip=$1
+if iptables -L INPUT -n | grep -q "$ip"; then
+iptables -D INPUT -s "$ip" -j DROP 2>/dev/null
+iptables -D FORWARD -s "$ip" -j DROP 2>/dev/null
+iptables -D OUTPUT -d "$ip" -j DROP 2>/dev/null
+echo "Unblocked IP: $ip from iptables."
+else
+echo "IP $ip is not blocked in iptables."
+fi
+}
+
 # Submenu for option 2 (remove hosts)
 while true; do
 clear
-print_header "Remove a host from the blocklist"
+print_header "Manage Blocked Hosts & IPs"
 echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
 echo -e "${COLOR_MENU}1. Remove a single host${COLOR_RESET}"
 echo -e "${COLOR_MENU}2. Remove multiple hosts${COLOR_RESET}"
-echo -e "${COLOR_MENU}3. Go back to main menu${COLOR_RESET}"
+echo -e "${COLOR_MENU}3. Unblock Host & IP${COLOR_RESET}" # New Option
+echo -e "${COLOR_MENU}4. Go back to main menu${COLOR_RESET}"
 echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
-echo -n -e "${COLOR_INPUT}Select an option [1-3]: ${COLOR_RESET}"
+echo -n -e "${COLOR_INPUT}Select an option [1-4]: ${COLOR_RESET}"
 read submenu_option
 
 case $submenu_option in
 1) remove_single_host; break ;;
 2) remove_multiple_hosts; break ;;
-3) break ;;
+3)
+# Unblock Host & IP
+print_header "Unblock Host & IP"
+echo "--------------------------------"
+echo "Enter the hostnames or IP addresses to unblock (separate multiple values with spaces):"
+read -r input_hosts
+
+# Process each input value (can be a hostname or IP)
+for item in $input_hosts; do
+# Remove from /etc/hosts
+remove_from_hosts "$item"
+
+# Check if input is an IP address
+if [[ "$item" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+unblock_ip "$item"
+fi
+done
+
+# Flush DNS cache to apply changes
+echo "Flushing DNS cache..."
+systemctl restart systemd-resolved || systemctl restart networking || systemd-resolve --flush-caches
+
+echo "--------------------------------"
+echo "Unblocking process completed."
+echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
+read -n 1
+;;
+4) break ;;
 *) print_error "Invalid option, please choose a valid option." ;;
 esac
 done
+
 ;;
 
-3) 
+3)
 print_header "Blocked Hosts"
 echo "--------------------------------"
 
@@ -422,9 +475,9 @@ echo "--------------------------------"
 echo "Blocked Entries from /etc/hosts:"
 echo "--------------------------------"
 if [ -s "/etc/hosts" ]; then
-    cat /etc/hosts
+cat /etc/hosts
 else
-    echo "No entries found in /etc/hosts."
+echo "No entries found in /etc/hosts."
 fi
 
 echo "--------------------------------"
@@ -433,9 +486,9 @@ echo "--------------------------------"
 echo "Blocked Trackers from /etc/trackers:"
 echo "--------------------------------"
 if [ -s "$TRACKERS_FILE" ]; then
-    cat "$TRACKERS_FILE"
+cat "$TRACKERS_FILE"
 else
-    echo "No entries found in $TRACKERS_FILE."
+echo "No entries found in $TRACKERS_FILE."
 fi
 
 echo "--------------------------------"
