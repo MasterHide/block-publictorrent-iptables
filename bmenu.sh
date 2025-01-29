@@ -424,7 +424,7 @@ print_header "Manage Blocked Hosts & IPs"
 echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
 echo -e "${COLOR_MENU}1. Remove a single host${COLOR_RESET}"
 echo -e "${COLOR_MENU}2. Remove multiple hosts${COLOR_RESET}"
-echo -e "${COLOR_MENU}3. Unblock Host & IP${COLOR_RESET}" # New Option
+echo -e "${COLOR_MENU}3. Unblock Host & IP In default /etc/hosts${COLOR_RESET}" # New Option
 echo -e "${COLOR_MENU}4. Go back to main menu${COLOR_RESET}"
 echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
 echo -n -e "${COLOR_INPUT}Select an option [1-4]: ${COLOR_RESET}"
