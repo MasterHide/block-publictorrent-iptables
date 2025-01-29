@@ -393,78 +393,148 @@ esac
 done
 ;;
 2)
-# Function to remove entries from /etc/hosts
-remove_from_hosts() {
-local host=$1
-if grep -q "$host" /etc/hosts; then
-sed -i "/$host/d" /etc/hosts
-echo "Removed $host from /etc/hosts."
-else
-echo "$host not found in /etc/hosts."
-fi
+# Function to remove specific IPv4 entries from /etc/hosts
+remove_ipv4_from_hosts() {
+    local host=$1
+    if grep -q "$host" /etc/hosts; then
+        # Remove only the line containing the IPv4 host
+        sed -i "/^[0-9]\{1,3\}(\.[0-9]\{1,3\})\{3\}.*$host/d" /etc/hosts
+        echo "Removed IPv4 entry for $host from /etc/hosts."
+    else
+        echo "IPv4 entry for $host not found in /etc/hosts."
+    fi
+}
+
+# Function to remove specific IPv6 entries from /etc/hosts
+remove_ipv6_from_hosts() {
+    local host=$1
+    if grep -q "$host" /etc/hosts; then
+        # Remove only the line containing the IPv6 host
+        sed -i "/^[a-fA-F0-9:]*.*$host/d" /etc/hosts
+        echo "Removed IPv6 entry for $host from /etc/hosts."
+    else
+        echo "IPv6 entry for $host not found in /etc/hosts."
+    fi
 }
 
 # Function to remove IP blocks from iptables
 unblock_ip() {
-local ip=$1
-if iptables -L INPUT -n | grep -q "$ip"; then
-iptables -D INPUT -s "$ip" -j DROP 2>/dev/null
-iptables -D FORWARD -s "$ip" -j DROP 2>/dev/null
-iptables -D OUTPUT -d "$ip" -j DROP 2>/dev/null
-echo "Unblocked IP: $ip from iptables."
-else
-echo "IP $ip is not blocked in iptables."
-fi
+    local ip=$1
+    if iptables -L INPUT -n | grep -q "$ip"; then
+        iptables -D INPUT -s "$ip" -j DROP 2>/dev/null
+        iptables -D FORWARD -s "$ip" -j DROP 2>/dev/null
+        iptables -D OUTPUT -d "$ip" -j DROP 2>/dev/null
+        echo "Unblocked IP: $ip from iptables."
+    else
+        echo "IP $ip is not blocked in iptables."
+    fi
+}
+
+# Function to identify if the input is IPv4 or IPv6
+identify_ip_type() {
+    local ip=$1
+    if [[ "$ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        # IPv4 address
+        return 0  # 0 indicates IPv4
+    elif [[ "$ip" =~ ^[a-fA-F0-9:]+$ ]]; then
+        # IPv6 address
+        return 1  # 1 indicates IPv6
+    else
+        # Not a valid IP
+        return 2  # 2 indicates invalid IP
+    fi
+}
+
+# Function to remove entries from /etc/hosts (both IPv4 and IPv6)
+remove_host_or_ip() {
+    local host=$1
+
+    # First, check if it's a valid IP and identify the type (IPv4/IPv6)
+    identify_ip_type "$host"
+    result=$?
+    
+    case $result in
+    0) 
+        # IPv4 address detected
+        remove_ipv4_from_hosts "$host"
+        ;;
+    1)
+        # IPv6 address detected
+        remove_ipv6_from_hosts "$host"
+        ;;
+    2)
+        # It's a hostname, not an IP address
+        # Try removing both IPv4 and IPv6 entries for this host
+        remove_ipv4_from_hosts "$host"
+        remove_ipv6_from_hosts "$host"
+        ;;
+    esac
 }
 
 # Submenu for option 2 (remove hosts)
 while true; do
-clear
-print_header "Manage Blocked Hosts & IPs"
-echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
-echo -e "${COLOR_MENU}1. Remove a single host${COLOR_RESET}"
-echo -e "${COLOR_MENU}2. Remove multiple hosts${COLOR_RESET}"
-echo -e "${COLOR_MENU}3. Unblock Host & IP In default /etc/hosts${COLOR_RESET}" # New Option
-echo -e "${COLOR_MENU}4. Go back to main menu${COLOR_RESET}"
-echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
-echo -n -e "${COLOR_INPUT}Select an option [1-4]: ${COLOR_RESET}"
-read submenu_option
+    clear
+    print_header "Manage Blocked Hosts & IPs"
+    echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
+    echo -e "${COLOR_MENU}1. Remove a single host or IP${COLOR_RESET}"
+    echo -e "${COLOR_MENU}2. Remove multiple hosts or IPs${COLOR_RESET}"
+    echo -e "${COLOR_MENU}3. Unblock Host & IP In default /etc/hosts${COLOR_RESET}" # New Option
+    echo -e "${COLOR_MENU}4. Go back to main menu${COLOR_RESET}"
+    echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
+    echo -n -e "${COLOR_INPUT}Select an option [1-4]: ${COLOR_RESET}"
+    read submenu_option
 
-case $submenu_option in
-1) remove_single_host; break ;;
-2) remove_multiple_hosts; break ;;
-3)
-# Unblock Host & IP
-print_header "Unblock Host & IP"
-echo "--------------------------------"
-echo "Enter the hostnames or IP addresses to unblock (separate multiple values with spaces):"
-read -r input_hosts
+    case $submenu_option in
+    1) 
+        echo "Enter a host or IP to remove (IPv4, IPv6 or hostname):"
+        read -r input_host
+        remove_host_or_ip "$input_host"
+        echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
+        read -n 1
+        break
+        ;;
+    2)
+        echo "Enter hosts or IPs to remove (separate multiple values with spaces):"
+        read -r input_hosts
+        # Process each input value (can be a hostname or IP)
+        for item in $input_hosts; do
+            remove_host_or_ip "$item"
+        done
+        echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
+        read -n 1
+        break
+        ;;
+    3)
+        # Unblock Host & IP
+        print_header "Unblock Host & IP"
+        echo "--------------------------------"
+        echo "Enter the hostnames or IP addresses to unblock (separate multiple values with spaces):"
+        read -r input_hosts
 
-# Process each input value (can be a hostname or IP)
-for item in $input_hosts; do
-# Remove from /etc/hosts
-remove_from_hosts "$item"
+        # Process each input value (can be a hostname or IP)
+        for item in $input_hosts; do
+            # Remove from /etc/hosts for IPv4
+            remove_host_or_ip "$item"
 
-# Check if input is an IP address
-if [[ "$item" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-unblock_ip "$item"
-fi
+            # Check if input is an IP address
+            if [[ "$item" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                unblock_ip "$item"
+            fi
+        done
+
+        # Flush DNS cache to apply changes
+        echo "Flushing DNS cache..."
+        systemctl restart systemd-resolved || systemctl restart networking || systemd-resolve --flush-caches
+
+        echo "--------------------------------"
+        echo "Unblocking process completed."
+        echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
+        read -n 1
+        ;;
+    4) break ;;
+    *) print_error "Invalid option, please choose a valid option." ;;
+    esac
 done
-
-# Flush DNS cache to apply changes
-echo "Flushing DNS cache..."
-systemctl restart systemd-resolved || systemctl restart networking || systemd-resolve --flush-caches
-
-echo "--------------------------------"
-echo "Unblocking process completed."
-echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
-read -n 1
-;;
-4) break ;;
-*) print_error "Invalid option, please choose a valid option." ;;
-esac
-done
-
 ;;
 
 3)
