@@ -471,6 +471,17 @@ remove_host_or_ip() {
     esac
 }
 
+# Function to remove entries from /etc/trackers
+remove_from_trackers() {
+    local host=$1
+    if grep -q "$host" /etc/trackers; then
+        sed -i "/$host/d" /etc/trackers
+        echo "Removed $host from /etc/trackers."
+    else
+        echo "$host not found in /etc/trackers."
+    fi
+}
+
 # Submenu for option 2 (remove hosts)
 while true; do
     clear
@@ -478,10 +489,11 @@ while true; do
     echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
     echo -e "${COLOR_MENU}1. Remove a single host or IP${COLOR_RESET}"
     echo -e "${COLOR_MENU}2. Remove multiple hosts or IPs${COLOR_RESET}"
-    echo -e "${COLOR_MENU}3. Unblock Host & IP In default /etc/hosts${COLOR_RESET}" # New Option
-    echo -e "${COLOR_MENU}4. Go back to main menu${COLOR_RESET}"
+    echo -e "${COLOR_MENU}3. Unblock Host & IP In default /etc/hosts${COLOR_RESET}"
+    echo -e "${COLOR_MENU}4. Remove from /etc/trackers${COLOR_RESET}"  # New option
+    echo -e "${COLOR_MENU}5. Go back to main menu${COLOR_RESET}"
     echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
-    echo -n -e "${COLOR_INPUT}Select an option [1-4]: ${COLOR_RESET}"
+    echo -n -e "${COLOR_INPUT}Select an option [1-5]: ${COLOR_RESET}"
     read submenu_option
 
     case $submenu_option in
@@ -531,7 +543,16 @@ while true; do
         echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
         read -n 1
         ;;
-    4) break ;;
+    4)
+        # Remove from /etc/trackers
+        echo "Enter host or IP to remove from /etc/trackers:"
+        read -r input_tracker
+        remove_from_trackers "$input_tracker"
+        echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
+        read -n 1
+        break
+        ;;
+    5) break ;;
     *) print_error "Invalid option, please choose a valid option." ;;
     esac
 done
