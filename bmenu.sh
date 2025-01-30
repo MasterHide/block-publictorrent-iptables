@@ -489,11 +489,46 @@ remove_host_or_ip() {
 remove_from_trackers() {
     local host=$1
     if grep -q "$host" /etc/trackers; then
+        # Remove the line containing the host from /etc/trackers
         sed -i "/$host/d" /etc/trackers
         echo "Removed $host from /etc/trackers."
+
+        # Check if the host corresponds to an IP and unblock if necessary
+        # Use your unblock_ip function if host is an IP address
+        identify_ip_type "$host"
+        result=$?
+
+        case $result in
+            0) # IPv4 detected
+                unblock_ip "$host"   # Call unblock_ip for IPv4
+                ;;
+            1) # IPv6 detected
+                unblock_ip "$host"   # Call unblock_ip for IPv6
+                ;;
+            2) # It's a hostname, so we need to handle any IPs related to this host
+                # Get the IP address of the host and unblock it (for both IPv4 and IPv6)
+                ip=$(getent hosts "$host" | awk '{ print $1 }')
+                if [[ -n "$ip" ]]; then
+                    identify_ip_type "$ip"
+                    result=$?
+
+                    case $result in
+                        0) unblock_ip "$ip" ;;  # IPv4 address
+                        1) unblock_ip "$ip" ;;  # IPv6 address
+                    esac
+                fi
+                ;;
+        esac
     else
         echo "$host not found in /etc/trackers."
     fi
+}
+
+# Function to get the IP address of a host (for hostname resolution)
+get_ip_from_host() {
+    local host=$1
+    ip=$(getent hosts "$host" | awk '{ print $1 }')
+    echo "$ip"
 }
 
 # Submenu for option 2 (remove hosts)
