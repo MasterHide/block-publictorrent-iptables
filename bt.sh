@@ -10,6 +10,7 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m'  # No Color
 
+# Functions for output
 print_success() { echo -e "${GREEN}$1${NC}"; }
 print_error() { echo -e "${RED}$1${NC}"; exit 1; }
 print_warning() { echo -e "${YELLOW}$1${NC}"; }
@@ -65,20 +66,29 @@ ESSENTIAL_FILES=(
     "https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/hostsTrackers"
     "https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/bt.sh"
 )
+
 for file in "${ESSENTIAL_FILES[@]}"; do
     download_file_to_all_paths "$file"
 done
 
-# Move hostsTrackers to a persistent location
+# Ensure /etc/hostsTrackers exists, create it if not
+if [ ! -f "/etc/hostsTrackers" ]; then
+    touch /etc/hostsTrackers || print_error "Failed to create /etc/hostsTrackers."
+    print_success "Created /etc/hostsTrackers."
+fi
+
+# Move hostsTrackers to a persistent location (check if file exists in any of the paths)
 if [ -f "/root/hostsTrackers" ]; then
     mv /root/hostsTrackers /etc/trackers || print_error "Failed to move hostsTrackers."
     print_success "Moved hostsTrackers to /etc/trackers for persistent blocking."
 fi
 
-# Update /etc/hosts with hostsTrackers (without duplicates)
+# Update /etc/hosts with tracker domains (if /etc/trackers exists)
 if [ -f "/etc/trackers" ]; then
     sort -u /etc/trackers >> /etc/hosts || print_error "Failed to update /etc/hosts."
     print_success "Updated /etc/hosts with tracker domains."
+else
+    print_error "/etc/trackers does not exist. Exiting."
 fi
 
 # Create cron job for blocking public trackers
