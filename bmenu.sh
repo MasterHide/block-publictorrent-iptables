@@ -6,17 +6,19 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-# Lock file check
-LOCK_FILE="/tmp/hiddify_update_lock"
+# Unique Lock file based on process ID (PID)
+LOCK_FILE="/tmp/hiddify_update_lock_$$"
+
+# Ensure to remove the lock file at the end of the script or on exit
+trap "rm -f $LOCK_FILE" EXIT
+
+# Check if the lock file exists (indicating an instance is already running)
 if [ -f "$LOCK_FILE" ]; then
     echo -e "\033[31mAnother instance of the script is already running. Exiting.\033[0m"
     exit 1
 else
-    touch "$LOCK_FILE"  # Create the lock file to prevent multiple instances
+    touch "$LOCK_FILE"  # Create the lock file with a unique name
 fi
-
-# Ensure to remove the lock file at the end of the script or on exit
-trap "rm -f $LOCK_FILE" EXIT
 
 # Check for required commands
 required_commands=("curl" "iptables" "getent")
@@ -392,10 +394,30 @@ read option
 
 case $option in
 1)
+# Function to print a warning message
+warn_msg() {
+    tput setaf 1; # Set text color to red
+    echo "WARNING: Blocking torrent traffic may impact some applications. Please proceed with caution."
+    echo "To unblock torrent traffic and remove the script later, you will need to run the unblocking process."
+    tput sgr0; # Reset text formatting
+}
+
 # Submenu for option 1
 while true; do
     clear
     print_header "Running Torrent Traffic Management..." 
+
+    # Show warning message
+    warn_msg
+
+    # Confirm before continuing
+    read -p "Do you want to continue with blocking torrent traffic? (y/n): " proceed
+    if [[ "$proceed" != "y" ]]; then
+        echo "Aborted. Returning to the main menu."
+        break
+    fi
+
+    # Run the torrent blocking script
     curl -fsSL https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/ctp.sh -o ctp.sh && chmod +x ctp.sh && sudo ./ctp.sh
     print_success "Torrent Traffic blocking completed."
 
