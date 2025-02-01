@@ -2,16 +2,29 @@
 
 # Ensure the script is run as root
 if [ "$(id -u)" -ne 0 ]; then
-echo -e "\033[31mThis script must be run as root. Exiting.\033[0m" # Red color for error
-exit 1
+    echo -e "\033[31mThis script must be run as root. Exiting.\033[0m" # Red color for error
+    exit 1
 fi
 
-# Check for required commands
-for cmd in curl iptables getent; do
-if ! command -v $cmd &> /dev/null; then
-echo -e "\033[31m$cmd is not installed. Please install $cmd and rerun the script.\033[0m"
-exit 1
+# Lock file check
+LOCK_FILE="/tmp/hiddify_update_lock"
+if [ -f "$LOCK_FILE" ]; then
+    echo -e "\033[31mAnother instance of the script is already running. Exiting.\033[0m"
+    exit 1
+else
+    touch "$LOCK_FILE"  # Create the lock file to prevent multiple instances
 fi
+
+# Ensure to remove the lock file at the end of the script or on exit
+trap "rm -f $LOCK_FILE" EXIT
+
+# Check for required commands
+required_commands=("curl" "iptables" "getent")
+for cmd in "${required_commands[@]}"; do
+    if ! command -v "$cmd" &> /dev/null; then
+        echo -e "\033[31m$cmd is not installed. Please install $cmd and rerun the script.\033[0m"
+        exit 1
+    fi
 done
 
 # Define paths to files
@@ -21,6 +34,14 @@ HOSTS_FILE="/etc/hosts"
 HIDDIFY_PATH="/opt/hiddify-manager"
 BMENU_PATH="$HIDDIFY_PATH/bmenu.sh"
 LOCK_FILE="/tmp/hiddify_update_lock" # Lock file to prevent Hiddify from applying config during script execution
+
+# Ensure write permissions on tracker files
+for file in "$TRACKERS_FILE" "$HOSTS_TRACKERS_FILE"; do
+    if [ ! -w "$file" ]; then
+        echo -e "\033[31mNo write permission for $file. Exiting.\033[0m"
+        exit 1
+    fi
+done
 
 # Color definitions for better UI/UX
 COLOR_HEADER="\033[1;34m"
@@ -33,83 +54,38 @@ COLOR_WARNING="\033[33m"
 
 # Function to print headers with color
 print_header() {
-echo -e "${COLOR_HEADER}$1${COLOR_RESET}"
+    echo -e "${COLOR_HEADER}$1${COLOR_RESET}"
 }
 
 # Function to print success messages with color
 print_success() {
-echo -e "${COLOR_SUCCESS}$1${COLOR_RESET}"
+    echo -e "${COLOR_SUCCESS}$1${COLOR_RESET}"
 }
 
 # Function to print error messages with color
 print_error() {
-echo -e "${COLOR_ERROR}$1${COLOR_RESET}"
+    echo -e "${COLOR_ERROR}$1${COLOR_RESET}"
 }
 
 # Function to display the banner at the top of the menu
 print_banner() {
-echo -e "\033[1;33m********************************************\033[0m"
-echo -e "\033[1;33m*** DARK-PROJECT B-IP MENU INTERFACE V2.5 ***\033[0m"
-echo -e "\033[1;33m*** Created by x404 MASTER ***\033[0m"
-echo -e "\033[1;33m*** Let's reduce the risk ***\033[0m"
-echo -e "\033[1;33m*** contact - https://t.me/Dark_Evi ***\033[0m"
-echo -e "\033[1;33m********************************************\033[0m"
-echo -e "\033[0;32m"
-echo -e "░█████╗░███╗░░██╗██╗░░██╗██╗████████╗"
-echo -e "██╔══██╗████╗░██║██║░░██║██║╚══██╔══╝"
-echo -e "██║░░██║██╔██╗██║███████║██║░░░██║░░░"
-echo -e "██║░░██║██║╚████║██╔══██║██║░░░██║░░░"
-echo -e "╚█████╔╝██║░╚███║██║░░██║██║░░░██║░░░"
-echo -e "░╚════╝░╚═╝░░╚══╝╚═╝░░╚═╝╚═╝░░░░░╚═╝"
-echo -e "\033[0m"
+    echo -e "\033[1;33m********************************************\033[0m"
+    echo -e "\033[1;33m*** DARK-PROJECT B-IP MENU INTERFACE V2.5 ***\033[0m"
+    echo -e "\033[1;33m*** Created by x404 MASTER ***\033[0m"
+    echo -e "\033[1;33m*** Let's reduce the risk ***\033[0m"
+    echo -e "\033[1;33m*** contact - https://t.me/Dark_Evi ***\033[0m"
+    echo -e "\033[1;33m********************************************\033[0m"
+    echo -e "\033[0;32m"
+    echo -e "░█████╗░███╗░░██╗██╗░░██╗██╗████████╗"
+    echo -e "██╔══██╗████╗░██║██║░░██║██║╚══██╔══╝"
+    echo -e "██║░░██║██╔██╗██║███████║██║░░░██║░░░"
+    echo -e "██║░░██║██║╚████║██╔══██║██║░░░██║░░░"
+    echo -e "╚█████╔╝██║░╚███║██║░░██║██║░░░██║░░░"
+    echo -e "░╚════╝░╚═╝░░╚══╝╚═╝░░╚═╝╚═╝░░░░░╚═╝"
+    echo -e "\033[0m"
 }
 
-# Function to reset the system by deleting specific files
-reset_system() {
-print_header "Uninstalling and resetting system..."
-
-# Confirm before proceeding with deletion
-echo -e "${COLOR_WARNING}WARNING: This will delete the following files if they exist: bmenu.sh, bt.sh, and hostsTrackers. Do you want to continue? (yes/no): ${COLOR_RESET}"
-read confirm
-if [[ "$confirm" != "yes" ]]; then
-print_error "Aborted deletion process."
-return
-fi
-
-# List of paths to check and delete the files
-paths_to_check=( "/home/ubuntu" "/root" "/opt/hiddify-manager" )
-
-# Iterate through each directory path
-for dir in "${paths_to_check[@]}"; do
-# Check and delete bmenu.sh if it exists
-if [ -f "$dir/bmenu.sh" ]; then
-echo "Deleting bmenu.sh in $dir..."
-rm -f "$dir/bmenu.sh"
-else
-print_error "bmenu.sh not found in $dir, skipping."
-fi
-
-# Check and delete bt.sh if it exists
-if [ -f "$dir/bt.sh" ]; then
-echo "Deleting bt.sh in $dir..."
-rm -f "$dir/bt.sh"
-else
-print_error "bt.sh not found in $dir, skipping."
-fi
-
-# Check and delete hostsTrackers if it exists
-if [ -f "$dir/hostsTrackers" ]; then
-echo "Deleting hostsTrackers in $dir..."
-rm -f "$dir/hostsTrackers"
-else
-print_error "hostsTrackers not found in $dir, skipping."
-fi
-done
-
-print_success "Specific files deletion process completed."
-}
-
-# Function to check if getent is installed
+# Function to check if getent is installed and DNS works
 check_getent() {
     if ! command -v getent &> /dev/null; then
         print_error "getent command is not installed. Please install the necessary package."
@@ -117,11 +93,46 @@ check_getent() {
         print_error "On RHEL/CentOS, run: sudo yum install glibc-common"
         exit 1
     fi
+    # Check if DNS resolution works
+    if ! getent hosts example.com &> /dev/null; then
+        print_error "DNS resolution is not working. Please check your network configuration."
+        exit 1
+    fi
+}
+
+# Function to remove the existing iptables rule and domain from list
+remove_existing_block() {
+    local host_or_ip="$1"
+
+    # Resolve the domain to IPs (if it's a domain)
+    if [[ ! "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
+    else
+        ips="$host_or_ip"
+    fi
+
+    # Remove iptables rules
+    for ip in $ips; do
+        iptables -D INPUT -d "$ip" -j DROP &>/dev/null
+        iptables -D FORWARD -d "$ip" -j DROP &>/dev/null
+        iptables -D OUTPUT -d "$ip" -j DROP &>/dev/null
+        iptables -D DOCKER-USER -d "$ip" -j DROP &>/dev/null
+    done
+
+    # Remove the domain/IP from the tracker files
+    sed -i "/$host_or_ip/d" "$TRACKERS_FILE"
+    sed -i "/$host_or_ip/d" "$HOSTS_TRACKERS_FILE"
+}
+
+# Function to save iptables rules
+save_iptables() {
+    iptables-save > /etc/iptables/rules.v4
+    print_success "Iptables rules saved successfully."
 }
 
 # Function to add a single host to blocklist
 add_single_host() {
-    check_getent  # Ensure getent is available
+    check_getent # Ensure getent is available
 
     echo -e "${COLOR_INPUT}Enter domain or IP to block: ${COLOR_RESET}"
     read host_or_ip
@@ -132,12 +143,18 @@ add_single_host() {
         return
     fi
 
+    # Check if the domain/IP already exists in the blocklist
+    if grep -q "$host_or_ip" "$TRACKERS_FILE" || grep -q "$host_or_ip" "$HOSTS_TRACKERS_FILE"; then
+        print_warning "$host_or_ip is already blocked. Removing existing block and updating..."
+
+        # Remove the existing block and update the rule
+        remove_existing_block "$host_or_ip"
+    fi
+
     # Check if it's an IP or a domain
     if [[ "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        # It's an IP address, use it directly
         ips="$host_or_ip"
     else
-        # Resolve the domain to IP(s) using getent
         ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
     fi
 
@@ -147,36 +164,27 @@ add_single_host() {
         return
     fi
 
-    # Block the IPs in iptables
+    # Block the IPs in iptables and update the files
     for ip in $ips; do
-        # Check if the rule already exists in iptables before adding it
-        if ! iptables -C INPUT -d "$ip" -j DROP &>/dev/null && \
-           ! iptables -C FORWARD -d "$ip" -j DROP &>/dev/null && \
-           ! iptables -C OUTPUT -d "$ip" -j DROP &>/dev/null && \
-           ! iptables -C DOCKER-USER -d "$ip" -j DROP &>/dev/null; then
-            iptables -A INPUT -d "$ip" -j DROP
-            iptables -A FORWARD -d "$ip" -j DROP
-            iptables -A OUTPUT -d "$ip" -j DROP
-            iptables -I DOCKER-USER -d "$ip" -j DROP
-            print_success "$ip has been blocked successfully."
-        else
-            print_error "$ip is already blocked, skipping."
-        fi
+        # Add the IP to iptables rules
+        iptables -A INPUT -d "$ip" -j DROP
+        iptables -A FORWARD -d "$ip" -j DROP
+        iptables -A OUTPUT -d "$ip" -j DROP
+        iptables -I DOCKER-USER -d "$ip" -j DROP
+        print_success "$ip has been blocked successfully."
 
-        # Add domain/IP to the tracker files (if not already present)
-        if ! grep -q "$host_or_ip" "$TRACKERS_FILE" && ! grep -q "$host_or_ip" "$HOSTS_TRACKERS_FILE"; then
-            echo "$host_or_ip" | tee -a "$TRACKERS_FILE" > /dev/null
-            echo "$host_or_ip" | tee -a "$HOSTS_TRACKERS_FILE" > /dev/null
-            print_success "$host_or_ip has been added to the blocklist."
-        else
-            print_error "$host_or_ip is already in the blocklist, skipping."
-        fi
+        # Add domain/IP to the tracker files
+        echo "$host_or_ip" | tee -a "$TRACKERS_FILE" > /dev/null
+        echo "$host_or_ip" | tee -a "$HOSTS_TRACKERS_FILE" > /dev/null
+        print_success "$host_or_ip has been added to the blocklist."
     done
+
+    save_iptables # Save iptables rules
 }
 
 # Function to add multiple hosts (domains or IPs) to blocklist
 add_multiple_hosts() {
-    check_getent  # Ensure getent is available
+    check_getent # Ensure getent is available
 
     echo -e "${COLOR_INPUT}Enter domains or IPs to block (press Enter without input to stop):${COLOR_RESET}"
 
@@ -191,12 +199,18 @@ add_multiple_hosts() {
             break
         fi
 
+        # Check if the domain/IP already exists in the blocklist
+        if grep -q "$host_or_ip" "$TRACKERS_FILE" || grep -q "$host_or_ip" "$HOSTS_TRACKERS_FILE"; then
+            print_warning "$host_or_ip is already blocked. Removing existing block and updating..."
+
+            # Remove the existing block and update the rule
+            remove_existing_block "$host_or_ip"
+        fi
+
         # Check if it's an IP or a domain
         if [[ "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            # It's an IP address, use it directly
             ips="$host_or_ip"
         else
-            # Resolve the domain to IP(s) using getent
             ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
         fi
 
@@ -206,32 +220,23 @@ add_multiple_hosts() {
             continue
         fi
 
-        # Block the IPs in iptables
+        # Block the IPs in iptables and update the files
         for ip in $ips; do
-            # Check if the rule already exists in iptables before adding it
-            if ! sudo iptables -C INPUT -d "$ip" -j DROP &>/dev/null && \
-               ! sudo iptables -C FORWARD -d "$ip" -j DROP &>/dev/null && \
-               ! sudo iptables -C OUTPUT -d "$ip" -j DROP &>/dev/null && \
-               ! sudo iptables -C DOCKER-USER -d "$ip" -j DROP &>/dev/null; then
-                sudo iptables -A INPUT -d "$ip" -j DROP
-                sudo iptables -A FORWARD -d "$ip" -j DROP
-                sudo iptables -A OUTPUT -d "$ip" -j DROP
-                sudo iptables -I DOCKER-USER -d "$ip" -j DROP
-                print_success "$ip has been blocked successfully."
-            else
-                print_error "$ip is already blocked, skipping."
-            fi
+            # Add the IP to iptables rules
+            iptables -A INPUT -d "$ip" -j DROP
+            iptables -A FORWARD -d "$ip" -j DROP
+            iptables -A OUTPUT -d "$ip" -j DROP
+            iptables -I DOCKER-USER -d "$ip" -j DROP
+            print_success "$ip has been blocked successfully."
 
-            # Add domain/IP to the tracker files (if not already present)
-            if ! grep -q "$host_or_ip" "$TRACKERS_FILE" && ! grep -q "$host_or_ip" "$HOSTS_TRACKERS_FILE"; then
-                echo "$host_or_ip" | sudo tee -a "$TRACKERS_FILE" > /dev/null
-                echo "$host_or_ip" | sudo tee -a "$HOSTS_TRACKERS_FILE" > /dev/null
-                print_success "$host_or_ip has been added to the blocklist."
-            else
-                print_error "$host_or_ip is already in the blocklist, skipping."
-            fi
+            # Add domain/IP to the tracker files
+            echo "$host_or_ip" | tee -a "$TRACKERS_FILE" > /dev/null
+            echo "$host_or_ip" | tee -a "$HOSTS_TRACKERS_FILE" > /dev/null
+            print_success "$host_or_ip has been added to the blocklist."
         done
     done
+
+    save_iptables # Save iptables rules
 }
 
 # Function to remove a single host (domain or IP) from the blocklist
