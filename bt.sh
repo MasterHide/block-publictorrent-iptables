@@ -69,14 +69,17 @@ for file in "${ESSENTIAL_FILES[@]}"; do
     download_file_to_all_paths "$file"
 done
 
-# Update /etc/hosts with hostsTrackers
-for path in "${INSTALL_PATHS[@]}"; do
-    if [ -f "$path/hostsTrackers" ]; then
-        cat "$path/hostsTrackers" | sort -uf >> /etc/hosts || print_error "Failed to update /etc/hosts with $path/hostsTrackers."
-        print_success "Updated /etc/hosts with $path/hostsTrackers."
-        rm -f "$path/hostsTrackers"
-    fi
-done
+# Move hostsTrackers to a persistent location
+if [ -f "/root/hostsTrackers" ]; then
+    mv /root/hostsTrackers /etc/trackers || print_error "Failed to move hostsTrackers."
+    print_success "Moved hostsTrackers to /etc/trackers for persistent blocking."
+fi
+
+# Update /etc/hosts with hostsTrackers (without duplicates)
+if [ -f "/etc/trackers" ]; then
+    sort -u /etc/trackers >> /etc/hosts || print_error "Failed to update /etc/hosts."
+    print_success "Updated /etc/hosts with tracker domains."
+fi
 
 # Create cron job for blocking public trackers
 CRON_FILE="/etc/cron.daily/denypublic"
@@ -84,20 +87,40 @@ cat >"$CRON_FILE"<<'EOF'
 #!/bin/bash
 IFS=$'\n'
 IPTABLES_CMD=$(which iptables)
+
 if [ ! -f /etc/trackers ]; then
     echo "No /etc/trackers file found. Exiting."
     exit 1
 fi
-L=$(sort /etc/trackers | uniq)
-for fn in $L; do
-    $IPTABLES_CMD -D INPUT -d $fn -j DROP
-    $IPTABLES_CMD -D FORWARD -d $fn -j DROP
-    $IPTABLES_CMD -D OUTPUT -d $fn -j DROP
-    $IPTABLES_CMD -A INPUT -d $fn -j DROP
-    $IPTABLES_CMD -A FORWARD -d $fn -j DROP
-    $IPTABLES_CMD -A OUTPUT -d $fn -j DROP
+
+# Convert hostnames to IPs (use nslookup or host command if necessary)
+TRACKER_IPS=$(awk '{print $1}' /etc/trackers | sort -u)
+
+for fn in $TRACKER_IPS; do
+    # Block only valid IPv4/IPv6 addresses
+    if [[ "$fn" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ || "$fn" =~ ^[a-fA-F0-9:]+$ ]]; then
+        $IPTABLES_CMD -D INPUT -d $fn -j DROP 2>/dev/null
+        $IPTABLES_CMD -D FORWARD -d $fn -j DROP 2>/dev/null
+        $IPTABLES_CMD -D OUTPUT -d $fn -j DROP 2>/dev/null
+
+        $IPTABLES_CMD -A INPUT -d $fn -j DROP
+        $IPTABLES_CMD -A FORWARD -d $fn -j DROP
+        $IPTABLES_CMD -A OUTPUT -d $fn -j DROP
+    else
+        # Use dnsmasq for domain blocking (if installed)
+        if command -v dnsmasq &> /dev/null; then
+            echo "address=/$fn/0.0.0.0" >> /etc/dnsmasq.d/blocked_domains.conf
+        fi
+    fi
 done
+
+# Restart dnsmasq if updated
+if [ -f /etc/dnsmasq.d/blocked_domains.conf ]; then
+    systemctl restart dnsmasq
+    echo "DNS-based blocking updated."
+fi
 EOF
+
 chmod +x "$CRON_FILE" || print_error "Failed to make $CRON_FILE executable."
 print_success "Blocking public trackers setup completed successfully."
 
