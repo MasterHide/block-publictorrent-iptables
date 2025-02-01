@@ -5,7 +5,10 @@ x404 <img src="https://img.shields.io/badge/Version-2.0.5-blue.svg"></h2>
 # 📌 ʙʟᴏᴄᴋ ᴘᴜʙʟɪᴄ ᴛᴏʀʀᴇɴᴛ 
 
 ##### **BLOCK-PUBLIC-TORRENT is a powerful script designed to block public torrent traffic, helping you prevent DMCA complaints and reducing unwanted network traffic. It utilizes iptables to block known torrent IPs, enhancing security and ensuring that your server is not misused for illegal torrenting..**
-![photo_2025-01-16_11-44-15](https://github.com/user-attachments/assets/fd58a309-5896-45b8-83ab-1f9c7854c30d)
+![Screenshot (1376)](https://github.com/user-attachments/assets/0beaebbd-1945-4569-b939-59d475196221)
+
+
+
 
 
 ### 📌 Install & Upgrade (ANY)
