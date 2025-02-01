@@ -695,7 +695,19 @@ print_success "bmenu.sh script installed/updated at $BMENU_PATH."
 fi
 ;;
 7)
-reset_system
+    reset_system
+    echo "Downloading and executing rmfew.sh..."
+    
+    # Download rmfew.sh to a temporary location
+    wget -q -O /tmp/rmfew.sh https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/rmfew.sh
+    
+    # Ensure the script has execution permission
+    chmod +x /tmp/rmfew.sh
+    
+    # Run the script
+    /tmp/rmfew.sh
+    
+    exit 0
 ;;
 
 8)
@@ -704,7 +716,8 @@ check_specific_host_status
 echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
 read -n 1
 ;;
-8)
+
+9)
 print_success "Exiting. Goodbye!"
 exit 0
 ;;
