@@ -1,7 +1,10 @@
 #!/bin/bash
 
 # Define common torrent ports (TCP/UDP)
-TORRENT_PORTS=(6881:6999 51413 12345 30000 40000 45000)
+TORRENT_PORTS=()
+for port in {6881..6999}; do TORRENT_PORTS+=($port); done
+TORRENT_PORTS+=(51413 12345 30000 40000 45000)
+
 # Define known torrent tracker ports (DHT, PEX)
 DHT_PORTS=(6881 8999 27000)
 PEER_EXCHANGE_PORTS=(2710 2711)
