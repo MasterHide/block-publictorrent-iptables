@@ -377,14 +377,15 @@ print_banner # Print the banner at the top of each menu
 print_header "MAIN MENU"
 print_header "V2.5"
 echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
-echo -e "${COLOR_MENU}1. Add a new host to block${COLOR_RESET}"
-echo -e "${COLOR_MENU}2. Remove a host from the blocklist${COLOR_RESET}"
-echo -e "${COLOR_MENU}3. View current blocked hosts${COLOR_RESET}"
-echo -e "${COLOR_MENU}4. Clean up hosts file list and remove unnecessary files${COLOR_RESET}"
-echo -e "${COLOR_MENU}5. Install or Update${COLOR_RESET}"
-echo -e "${COLOR_MENU}6. Uninstall all and reset system${COLOR_RESET}"
-echo -e "${COLOR_MENU}7. Check if a specific host (domain/IP) is blocked${COLOR_RESET}"
-echo -e "${COLOR_MENU}8. Exit${COLOR_RESET}"
+echo -e "${COLOR_MENU}1. Torrent Traffic Management${COLOR_RESET}"
+echo -e "${COLOR_MENU}2. Add a new host to block${COLOR_RESET}"
+echo -e "${COLOR_MENU}3. Remove a host from the blocklist${COLOR_RESET}"
+echo -e "${COLOR_MENU}4. View current blocked hosts${COLOR_RESET}"
+echo -e "${COLOR_MENU}5. Clean up hosts file list and remove unnecessary files${COLOR_RESET}"
+echo -e "${COLOR_MENU}6. Install or Update${COLOR_RESET}"
+echo -e "${COLOR_MENU}7. Uninstall all and reset system${COLOR_RESET}"
+echo -e "${COLOR_MENU}8. Check if a specific host (domain/IP) is blocked${COLOR_RESET}"
+echo -e "${COLOR_MENU}9. Exit${COLOR_RESET}"
 echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
 echo -n -e "${COLOR_INPUT}Select an option [1-8]: ${COLOR_RESET}"
 read option
@@ -392,6 +393,21 @@ read option
 case $option in
 1)
 # Submenu for option 1
+while true; do
+    clear
+    print_header "Running Torrent Traffic Management..." 
+    curl -fsSL https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/ctp.sh -o ctp.sh && chmod +x ctp.sh && sudo ./ctp.sh
+    print_success "Torrent Traffic blocking completed."
+
+    # Ask user if they want to return to the main menu or exit
+    read -p "Do you want to return to the main menu? (y/n): " choice
+    if [[ "$choice" != "y" ]]; then
+        break  # Exit the loop if the user doesn't want to return
+    fi
+done
+;;
+2)
+# Submenu for option 2
 while true; do
 clear
 print_header "Add a new host to block"
@@ -411,7 +427,7 @@ case $submenu_option in
 esac
 done
 ;;
-2)
+3)
 # Function to remove specific IPv4 entries from /etc/hosts
 remove_ipv4_from_hosts() {
     local host=$1
@@ -541,8 +557,8 @@ while true; do
     clear
     print_header "Manage Blocked Hosts & IPs"
     echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
-    echo -e "${COLOR_MENU}1. Remove a single host or IP${COLOR_RESET}"
-    echo -e "${COLOR_MENU}2. Remove multiple hosts or IPs${COLOR_RESET}"
+    echo -e "${COLOR_MENU}1. Remove a single host or IP (update soon)${COLOR_RESET}"
+    echo -e "${COLOR_MENU}2. Remove multiple hosts or IPs (update soon)${COLOR_RESET}"
     echo -e "${COLOR_MENU}3. Unblock Host & IP In default /etc/hosts${COLOR_RESET}"
     echo -e "${COLOR_MENU}4. Remove from /etc/trackers${COLOR_RESET}"  # New option
     echo -e "${COLOR_MENU}5. Go back to main menu${COLOR_RESET}"
@@ -612,7 +628,7 @@ while true; do
 done
 ;;
 
-3)
+4)
 print_header "Blocked Hosts"
 echo "--------------------------------"
 
@@ -641,12 +657,12 @@ echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
 read -n 1
 ;;
 
-4)
+5)
 print_header "Running cleanup script..."
 sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/cleanup_hosts.sh)"
 print_success "Cleanup completed."
 ;;
-5)
+6)
 print_header "Installing or updating bmenu.sh script..."
 if [ -f "$BMENU_PATH" ]; then
 print_success "$BMENU_PATH already exists."
@@ -656,11 +672,11 @@ sudo chmod +x "$BMENU_PATH"
 print_success "bmenu.sh script installed/updated at $BMENU_PATH."
 fi
 ;;
-6)
+7)
 reset_system
 ;;
 
-7)
+8)
 # Check if a specific host (domain/IP) is blocked
 check_specific_host_status
 echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
