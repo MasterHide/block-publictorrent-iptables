@@ -241,91 +241,84 @@ add_multiple_hosts() {
     save_iptables # Save iptables rules
 }
 
-# Function to remove a single host (domain or IP) from the blocklist
-remove_single_host() {
-echo -e "${COLOR_INPUT}Enter domain or IP to remove from the blocklist: ${COLOR_RESET}"
-read host_or_ip
+# Unified function to remove and unblock multiple hosts (IPs and domains)
+remove_and_unblock_multiple_hosts() {
+    echo -e "${COLOR_INPUT}Enter domains or IPs to remove and unblock (separate with spaces): ${COLOR_RESET}"
+    read -r input_hosts
 
-# Check if it's empty
-if [ -z "$host_or_ip" ]; then
-print_error "No domain or IP provided. Returning to the menu."
-return
-fi
+    # Check if input is empty
+    if [ -z "$input_hosts" ]; then
+        print_error "No domains or IPs provided. Returning to the menu."
+        return
+    fi
 
-# Check if it's an IP or a domain
-if [[ "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-# It's an IP address, use it directly
-ips="$host_or_ip"
-else
-# Resolve the domain to IP(s)
-ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
-fi
+    # Loop over each host or IP in the input
+    for host_or_ip in $input_hosts; do
+        # Initialize ips as empty before processing a new host/IP
+        ips=""
 
-# If no IPs are resolved, skip this domain
-if [ -z "$ips" ]; then
-print_error "Failed to resolve $host_or_ip to IP addresses."
-return
-fi
+        # Replace hyphens with dots in case of the "88-222-210-216.init.lt" format
+        host_or_ip=$(echo "$host_or_ip" | sed 's/-/\./g')
 
-# Remove the IPs from iptables
-for ip in $ips; do
-sudo iptables -D INPUT -d "$ip" -j DROP
-sudo iptables -D FORWARD -d "$ip" -j DROP
-sudo iptables -D OUTPUT -d "$ip" -j DROP
-sudo iptables -D DOCKER-USER -d "$ip" -j DROP
-print_success "$ip has been unblocked successfully."
+        # Check if it's an IP or a domain
+        if [[ "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            # It's an IP address, use it directly
+            ips="$host_or_ip"
+        else
+            # Resolve the domain to IP(s)
+            ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
+        fi
 
-# Remove the domain/IP from the tracker files
-sudo sed -i "/$host_or_ip/d" "$TRACKERS_FILE"
-sudo sed -i "/$host_or_ip/d" "$HOSTS_TRACKERS_FILE"
-print_success "$host_or_ip has been removed from the blocklist."
-done
-}
+        # If no IPs are resolved, skip this domain
+        if [ -z "$ips" ]; then
+            print_error "Failed to resolve $host_or_ip to IP addresses. Skipping."
+            continue
+        fi
 
-# Function to remove multiple hosts (domains or IPs) from blocklist
-remove_multiple_hosts() {
-echo -e "${COLOR_INPUT}Enter domains or IPs to remove from the blocklist (press Enter without input to stop):${COLOR_RESET}"
+        # Remove the IPs from iptables
+        for ip in $ips; do
+            if sudo iptables -C INPUT -d "$ip" -j DROP 2>/dev/null; then
+                sudo iptables -D INPUT -d "$ip" -j DROP
+                sudo iptables -D FORWARD -d "$ip" -j DROP
+                sudo iptables -D OUTPUT -d "$ip" -j DROP
+                sudo iptables -D DOCKER-USER -d "$ip" -j DROP
+                print_success "$ip has been unblocked successfully."
+            else
+                print_error "$ip was not blocked previously, skipping iptables removal."
+            fi
+        done
 
-while true; do
-# Prompt for user input
-echo -n -e "${COLOR_INPUT}Enter domain or IP to remove: ${COLOR_RESET}"
-read host_or_ip
+        # Remove the domain/IP from the tracker files
+        for ip in $ips; do
+            sudo sed -i "/$ip/d" "$TRACKERS_FILE"
+            sudo sed -i "/$ip/d" "$HOSTS_TRACKERS_FILE"
+            print_success "$ip has been removed from the blocklist."
+        done
 
-# Exit the loop if the user presses Enter without typing anything
-if [ -z "$host_or_ip" ]; then
-print_success "No more domains or IPs to remove. Returning to the menu."
-break
-fi
+        # Also remove the host from /etc/hosts
+        sudo sed -i "/$host_or_ip/d" /etc/hosts
+        print_success "$host_or_ip has been removed from /etc/hosts."
 
-# Check if it's an IP or a domain
-if [[ "$host_or_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-# It's an IP address, use it directly
-ips="$host_or_ip"
-else
-# Resolve the domain to IP(s)
-ips=$(getent ahosts "$host_or_ip" | awk '{print $1}' | sort -u)
-fi
+        # Remove the host from /etc/trackers
+        sudo sed -i "/$host_or_ip/d" /etc/trackers
+        print_success "$host_or_ip has been removed from /etc/trackers."
 
-# If no IPs are resolved, skip this domain
-if [ -z "$ips" ]; then
-print_error "Failed to resolve $host_or_ip to IP addresses."
-continue
-fi
+        # Remove the host from /etc/hostsTrackers
+        sudo sed -i "/$host_or_ip/d" /etc/hostsTrackers
+        print_success "$host_or_ip has been removed from /etc/hostsTrackers."
+    done
 
-# Remove the IPs from iptables
-for ip in $ips; do
-sudo iptables -D INPUT -d "$ip" -j DROP
-sudo iptables -D FORWARD -d "$ip" -j DROP
-sudo iptables -D OUTPUT -d "$ip" -j DROP
-sudo iptables -D DOCKER-USER -d "$ip" -j DROP
-print_success "$ip has been unblocked successfully."
+    # Ask the user if they want to check existing iptables rules
+    echo -e "${COLOR_INPUT}Do you want to check the existing iptables rules with line numbers? (y/n): ${COLOR_RESET}"
+    read -r check_rules
 
-# Remove the domain/IP from the tracker files
-sudo sed -i "/$host_or_ip/d" "$TRACKERS_FILE"
-sudo sed -i "/$host_or_ip/d" "$HOSTS_TRACKERS_FILE"
-print_success "$host_or_ip has been removed from the blocklist."
-done
-done
+    if [[ "$check_rules" =~ ^[Yy]$ ]]; then
+        # Show the existing iptables rules with line numbers
+        echo -e "${COLOR_INFO}Existing iptables rules with line numbers: ${COLOR_RESET}"
+        sudo iptables -L -v --line-numbers
+    else
+        echo -e "${COLOR_INFO}Skipping iptables rules check.${COLOR_RESET}"
+    fi
 }
 
 # Function to check if a specific host (domain or IP) is blocked (Active/Not Active)
@@ -450,202 +443,29 @@ esac
 done
 ;;
 3)
-# Function to remove specific IPv4 entries from /etc/hosts
-remove_ipv4_from_hosts() {
-    local host=$1
-    if grep -q "$host" /etc/hosts; then
-        # Remove only the line containing the IPv4 host
-        sed -i "/^[0-9]\{1,3\}(\.[0-9]\{1,3\})\{3\}.*$host/d" /etc/hosts
-        echo "Removed IPv4 entry for $host from /etc/hosts."
-    else
-        echo "IPv4 entry for $host not found in /etc/hosts."
-    fi
-}
-
-# Function to remove specific IPv6 entries from /etc/hosts
-remove_ipv6_from_hosts() {
-    local host=$1
-    if grep -q "$host" /etc/hosts; then
-        # Remove only the line containing the IPv6 host
-        sed -i "/^[a-fA-F0-9:]*.*$host/d" /etc/hosts
-        echo "Removed IPv6 entry for $host from /etc/hosts."
-    else
-        echo "IPv6 entry for $host not found in /etc/hosts."
-    fi
-}
-
-# Function to remove IP blocks from iptables
-unblock_ip() {
-    local ip=$1
-    if iptables -L INPUT -n | grep -q "$ip"; then
-        iptables -D INPUT -s "$ip" -j DROP 2>/dev/null
-        iptables -D FORWARD -s "$ip" -j DROP 2>/dev/null
-        iptables -D OUTPUT -d "$ip" -j DROP 2>/dev/null
-        echo "Unblocked IP: $ip from iptables."
-    else
-        echo "IP $ip is not blocked in iptables."
-    fi
-}
-
-# Function to identify if the input is IPv4 or IPv6
-identify_ip_type() {
-    local ip=$1
-    if [[ "$ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        # IPv4 address
-        return 0  # 0 indicates IPv4
-    elif [[ "$ip" =~ ^[a-fA-F0-9:]+$ ]]; then
-        # IPv6 address
-        return 1  # 1 indicates IPv6
-    else
-        # Not a valid IP
-        return 2  # 2 indicates invalid IP
-    fi
-}
-
-# Function to remove entries from /etc/hosts (both IPv4 and IPv6)
-remove_host_or_ip() {
-    local host=$1
-
-    # First, check if it's a valid IP and identify the type (IPv4/IPv6)
-    identify_ip_type "$host"
-    result=$?
-    
-    case $result in
-    0) 
-        # IPv4 address detected
-        remove_ipv4_from_hosts "$host"
-        ;;
-    1)
-        # IPv6 address detected
-        remove_ipv6_from_hosts "$host"
-        ;;
-    2)
-        # It's a hostname, not an IP address
-        # Try removing both IPv4 and IPv6 entries for this host
-        remove_ipv4_from_hosts "$host"
-        remove_ipv6_from_hosts "$host"
-        ;;
-    esac
-}
-
-# Function to remove entries from /etc/trackers
-remove_from_trackers() {
-    local host=$1
-    if grep -q "$host" /etc/trackers; then
-        # Remove the line containing the host from /etc/trackers
-        sed -i "/$host/d" /etc/trackers
-        echo "Removed $host from /etc/trackers."
-
-        # Check if the host corresponds to an IP and unblock if necessary
-        # Use your unblock_ip function if host is an IP address
-        identify_ip_type "$host"
-        result=$?
-
-        case $result in
-            0) # IPv4 detected
-                unblock_ip "$host"   # Call unblock_ip for IPv4
-                ;;
-            1) # IPv6 detected
-                unblock_ip "$host"   # Call unblock_ip for IPv6
-                ;;
-            2) # It's a hostname, so we need to handle any IPs related to this host
-                # Get the IP address of the host and unblock it (for both IPv4 and IPv6)
-                ip=$(getent hosts "$host" | awk '{ print $1 }')
-                if [[ -n "$ip" ]]; then
-                    identify_ip_type "$ip"
-                    result=$?
-
-                    case $result in
-                        0) unblock_ip "$ip" ;;  # IPv4 address
-                        1) unblock_ip "$ip" ;;  # IPv6 address
-                    esac
-                fi
-                ;;
-        esac
-    else
-        echo "$host not found in /etc/trackers."
-    fi
-}
-
-# Function to get the IP address of a host (for hostname resolution)
-get_ip_from_host() {
-    local host=$1
-    ip=$(getent hosts "$host" | awk '{ print $1 }')
-    echo "$ip"
-}
-
-# Submenu for option 2 (remove hosts)
+# Submenu for option 3 (remove hosts)
 while true; do
     clear
     print_header "Manage Blocked Hosts & IPs"
     echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
-    echo -e "${COLOR_MENU}1. Remove a single host or IP (update soon)${COLOR_RESET}"
-    echo -e "${COLOR_MENU}2. Remove multiple hosts or IPs (update soon)${COLOR_RESET}"
-    echo -e "${COLOR_MENU}3. Unblock Host & IP In default /etc/hosts${COLOR_RESET}"
-    echo -e "${COLOR_MENU}4. Remove from /etc/trackers${COLOR_RESET}"  # New option
-    echo -e "${COLOR_MENU}5. Go back to main menu${COLOR_RESET}"
+    echo -e "${COLOR_MENU}1. Remove and unblock multiple hosts/IPs (IPv4, IPv6 or domain)${COLOR_RESET}"
+    echo -e "${COLOR_MENU}2. Go back to main menu${COLOR_RESET}"
     echo -e "${COLOR_MENU}--------------------------------------------${COLOR_RESET}"
-    echo -n -e "${COLOR_INPUT}Select an option [1-5]: ${COLOR_RESET}"
+    echo -n -e "${COLOR_INPUT}Select an option [1-2]: ${COLOR_RESET}"
     read submenu_option
 
     case $submenu_option in
-    1) 
-        echo "Enter a host or IP to remove (IPv4, IPv6 or hostname):"
-        read -r input_host
-        remove_host_or_ip "$input_host"
+    1)
+        # Call the unified function to unblock and remove multiple hosts
+        remove_and_unblock_multiple_hosts
         echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
         read -n 1
         break
         ;;
-    2)
-        echo "Enter hosts or IPs to remove (separate multiple values with spaces):"
-        read -r input_hosts
-        # Process each input value (can be a hostname or IP)
-        for item in $input_hosts; do
-            remove_host_or_ip "$item"
-        done
-        echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
-        read -n 1
-        break
+    2) break ;;
+    *)
+        print_error "Invalid option, please choose a valid option."
         ;;
-    3)
-        # Unblock Host & IP
-        print_header "Unblock Host & IP"
-        echo "--------------------------------"
-        echo "Enter the hostnames or IP addresses to unblock (separate multiple values with spaces):"
-        read -r input_hosts
-
-        # Process each input value (can be a hostname or IP)
-        for item in $input_hosts; do
-            # Remove from /etc/hosts for IPv4
-            remove_host_or_ip "$item"
-
-            # Check if input is an IP address
-            if [[ "$item" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-                unblock_ip "$item"
-            fi
-        done
-
-        # Flush DNS cache to apply changes
-        echo "Flushing DNS cache..."
-        systemctl restart systemd-resolved || systemctl restart networking || systemd-resolve --flush-caches
-
-        echo "--------------------------------"
-        echo "Unblocking process completed."
-        echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
-        read -n 1
-        ;;
-    4)
-        # Remove from /etc/trackers
-        echo "Enter host or IP to remove from /etc/trackers:"
-        read -r input_tracker
-        remove_from_trackers "$input_tracker"
-        echo -e "${COLOR_INPUT}Press any key to continue...${COLOR_RESET}"
-        read -n 1
-        break
-        ;;
-    5) break ;;
-    *) print_error "Invalid option, please choose a valid option." ;;
     esac
 done
 ;;
