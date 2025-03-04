@@ -71,20 +71,20 @@ print_error() {
 
 # Function to display the banner at the top of the menu
 print_banner() {
-    echo -e "\033[1;33m********************************************\033[0m"
-    echo -e "\033[1;33m*** DARK-PROJECT B-IP MENU INTERFACE V2.5 ***\033[0m"
-    echo -e "\033[1;33m*** Created by x404 MASTER ***\033[0m"
-    echo -e "\033[1;33m*** Let's reduce the risk ***\033[0m"
-    echo -e "\033[1;33m*** contact - https://t.me/Dark_Evi ***\033[0m"
-    echo -e "\033[1;33m********************************************\033[0m"
-    echo -e "\033[0;32m"
-    echo -e "░█████╗░███╗░░██╗██╗░░██╗██╗████████╗"
-    echo -e "██╔══██╗████╗░██║██║░░██║██║╚══██╔══╝"
-    echo -e "██║░░██║██╔██╗██║███████║██║░░░██║░░░"
-    echo -e "██║░░██║██║╚████║██╔══██║██║░░░██║░░░"
-    echo -e "╚█████╔╝██║░╚███║██║░░██║██║░░░██║░░░"
-    echo -e "░╚════╝░╚═╝░░╚══╝╚═╝░░╚═╝╚═╝░░░░░╚═╝"
-    echo -e "\033[0m"
+echo -e "\033[1;33m********************************************\033[0m"
+echo -e "\033[1;33m*** DARK-PROJECT B-IP MENU INTERFACE V2.5 ***\033[0m"
+echo -e "\033[1;33m*** Created by x404 MASTER ***\033[0m"
+echo -e "\033[1;33m*** Let's reduce the risk ***\033[0m"
+echo -e "\033[1;33m*** contact - https://t.me/Dark_Evi ***\033[0m"
+echo -e "\033[1;33m********************************************\033[0m"
+echo -e "\033[0;32m"
+echo -e "██╗░░██╗░░░░░░░██████╗██╗░░░░░"
+echo -e "╚██╗██╔╝░░░░░░██╔════╝██║░░░░░"
+echo -e "░╚███╔╝░█████╗╚█████╗░██║░░░░░"
+echo -e "░██╔██╗░╚════╝░╚═══██╗██║░░░░░"
+echo -e "██╔╝╚██╗░░░░░░██████╔╝███████╗"
+echo -e "╚═╝░░╚═╝░░░░░░╚═════╝░╚══════╝"
+echo -e "\033[0m"
 }
 
 # Function to check if getent is installed and DNS works
