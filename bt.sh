@@ -89,8 +89,37 @@ if [ -f "/etc/trackers" ]; then
     # Backup the current hosts file
     cp /etc/hosts /etc/hosts.backup-$(date +%Y%m%d-%H%M%S)
     
-    # Remove any existing tracker entries
-    sed -i '/# Added by torrent block script/d' /etc/hosts
+    # Remove any existing tracker entries (without comments)
+    if [ -f "/etc/trackers" ]; then
+        while read -r line; do
+            # Skip empty lines and comments
+            if [ -z "$line" ] || [[ "$line" == \#* ]]; then
+                continue
+            fi
+            
+            # Extract domain from line (format: "0.0.0.0 domain.com")
+            domain=$(echo "$line" | awk '{print $2}')
+            if [ -n "$domain" ]; then
+                sed -i "/[[:space:]]$domain$/d" /etc/hosts
+            fi
+        done < /etc/trackers
+    fi
+    
+    # Remove any existing CDN tracker entries
+    if [ -f "/etc/cdnTrackers" ]; then
+        while read -r line; do
+            # Skip empty lines and comments
+            if [ -z "$line" ] || [[ "$line" == \#* ]]; then
+                continue
+            fi
+            
+            # Extract domain from line (format: "0.0.0.0 domain.com")
+            domain=$(echo "$line" | awk '{print $2}')
+            if [ -n "$domain" ]; then
+                sed -i "/[[:space:]]$domain$/d" /etc/hosts
+            fi
+        done < /etc/cdnTrackers
+    fi
     
     # Add the new entries from trackers
     while read -r line; do
@@ -102,7 +131,7 @@ if [ -f "/etc/trackers" ]; then
         # Extract domain from line (format: "0.0.0.0 domain.com")
         domain=$(echo "$line" | awk '{print $2}')
         if [ -n "$domain" ]; then
-            echo "# Added by torrent block script $line" >> /etc/hosts
+            echo "0.0.0.0 $domain" >> /etc/hosts
         fi
     done < /etc/trackers
     
@@ -199,7 +228,7 @@ if [ -f "/etc/cdnTrackers" ]; then
         done
         
         # Also add to /etc/hosts for DNS-level blocking
-        echo "# Added by torrent block script (CDN) $line" >> /etc/hosts
+        echo "0.0.0.0 $domain" >> /etc/hosts
     done < /etc/cdnTrackers
     
     print_success "CDN trackers processed successfully."
@@ -265,6 +294,41 @@ block_ip() {
     fi
 }
 
+# Backup and update /etc/hosts
+cp /etc/hosts /etc/hosts.backup-$(date +%Y%m%d-%H%M%S)
+
+# Remove any existing tracker entries
+if [ -f /etc/trackers ]; then
+    while read -r line; do
+        # Skip empty lines and comments
+        if [ -z "$line" ] || [[ "$line" == \#* ]]; then
+            continue
+        fi
+        
+        # Extract domain from line (format: "0.0.0.0 domain.com")
+        domain=$(echo "$line" | awk '{print $2}')
+        if [ -n "$domain" ]; then
+            sed -i "/[[:space:]]$domain$/d" /etc/hosts
+        fi
+    done < /etc/trackers
+fi
+
+# Remove any existing CDN tracker entries
+if [ -f /etc/cdnTrackers ]; then
+    while read -r line; do
+        # Skip empty lines and comments
+        if [ -z "$line" ] || [[ "$line" == \#* ]]; then
+            continue
+        fi
+        
+        # Extract domain from line (format: "0.0.0.0 domain.com")
+        domain=$(echo "$line" | awk '{print $2}')
+        if [ -n "$domain" ]; then
+            sed -i "/[[:space:]]$domain$/d" /etc/hosts
+        fi
+    done < /etc/cdnTrackers
+fi
+
 # Process non-proxy domains in /etc/trackers using original method
 if [ -f /etc/trackers ]; then
     echo "Processing non-proxy domains in /etc/trackers..."
@@ -287,6 +351,20 @@ if [ -f /etc/trackers ]; then
             fi
         fi
     done
+    
+    # Add entries to /etc/hosts
+    while read -r line; do
+        # Skip empty lines and comments
+        if [ -z "$line" ] || [[ "$line" == \#* ]]; then
+            continue
+        fi
+        
+        # Extract domain from line (format: "0.0.0.0 domain.com")
+        domain=$(echo "$line" | awk '{print $2}')
+        if [ -n "$domain" ]; then
+            echo "0.0.0.0 $domain" >> /etc/hosts
+        fi
+    done < /etc/trackers
 fi
 
 # Process proxy domains in /etc/cdnTrackers using IP resolution
@@ -321,6 +399,9 @@ if [ -f /etc/cdnTrackers ]; then
         for ip in $ips; do
             block_ip "$ip"
         done
+        
+        # Add to /etc/hosts
+        echo "0.0.0.0 $domain" >> /etc/hosts
     done < /etc/cdnTrackers
 fi
 
