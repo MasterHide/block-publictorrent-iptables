@@ -73,10 +73,11 @@ if [ ! -f "/etc/hostsTrackers" ]; then
     touch /etc/hostsTrackers || print_error "Failed to create /etc/hostsTrackers."
     print_success "Created /etc/hostsTrackers."
 fi
-# Move hostsTrackers to a persistent location (check if file exists in any of the paths)
+# Create /etc/trackers from hostsTrackers (extract domains only)
 if [ -f "/root/hostsTrackers" ]; then
-    mv /root/hostsTrackers /etc/trackers || print_error "Failed to move hostsTrackers."
-    print_success "Moved hostsTrackers to /etc/trackers for persistent blocking."
+    # Extract only the domain names (second field) and skip empty lines and comments
+    grep -v '^#' /root/hostsTrackers | grep -v '^$' | awk '{print $2}' > /etc/trackers || print_error "Failed to create /etc/trackers."
+    print_success "Created /etc/trackers with domain names from hostsTrackers."
 fi
 # Update /etc/hosts with tracker domains (if /etc/trackers exists)
 if [ -f "/etc/trackers" ]; then
