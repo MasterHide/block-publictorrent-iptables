@@ -73,11 +73,16 @@ if [ ! -f "/etc/hostsTrackers" ]; then
     touch /etc/hostsTrackers || print_error "Failed to create /etc/hostsTrackers."
     print_success "Created /etc/hostsTrackers."
 fi
-# Create /etc/trackers from hostsTrackers (extract domains only)
+# Move hostsTrackers to a persistent location (check if file exists in any of the paths)
 if [ -f "/root/hostsTrackers" ]; then
-    # Extract only the domain names (second field) and skip empty lines and comments
-    grep -v '^#' /root/hostsTrackers | grep -v '^$' | awk '{print $2}' > /etc/trackers || print_error "Failed to create /etc/trackers."
-    print_success "Created /etc/trackers with domain names from hostsTrackers."
+    mv /root/hostsTrackers /etc/trackers || print_error "Failed to move hostsTrackers."
+    print_success "Moved hostsTrackers to /etc/trackers for persistent blocking."
+fi
+# Create a domains-only file for IP resolution
+if [ -f "/etc/trackers" ]; then
+    # Extract only domain names (second field) and skip empty lines and comments
+    grep -v '^#' /etc/trackers | grep -v '^$' | awk '{print $2}' > /etc/domains-only || print_error "Failed to create domains-only file."
+    print_success "Created domains-only file for IP resolution."
 fi
 # Update /etc/hosts with tracker domains (if /etc/trackers exists)
 if [ -f "/etc/trackers" ]; then
@@ -88,12 +93,17 @@ if [ -f "/etc/trackers" ]; then
     sed -i '/# Added by torrent block script/d' /etc/hosts
     
     # Add the new entries from trackers
-    while read -r domain; do
+    while read -r line; do
         # Skip empty lines and comments
-        if [ -z "$domain" ] || [[ "$domain" == \#* ]]; then
+        if [ -z "$line" ] || [[ "$line" == \#* ]]; then
             continue
         fi
-        echo "# Added by torrent block script 0.0.0.0 $domain" >> /etc/hosts
+        
+        # Extract domain from line (format: "0.0.0.0 domain.com")
+        domain=$(echo "$line" | awk '{print $2}')
+        if [ -n "$domain" ]; then
+            echo "# Added by torrent block script $line" >> /etc/hosts
+        fi
     done < /etc/trackers
     
     print_success "Updated /etc/hosts with tracker domains."
@@ -107,8 +117,8 @@ cat >"$CRON_FILE"<<'EOF'
 # Function to resolve domain to IPs
 resolve_domain() {
     local domain=$1
-    local ipv4s=$(getent ahosts "$domain" | grep "STREAM" | awk '{print $1}' | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$" | sort -u)
-    local ipv6s=$(getent ahosts "$domain" | grep "STREAM" | awk '{print $1}' | grep -E "^[0-9a-fA-F:]+$" | sort -u)
+    local ipv4s=$(getent ahosts "$domain" 2>/dev/null | grep "STREAM" | awk '{print $1}' | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$" | sort -u)
+    local ipv6s=$(getent ahosts "$domain" 2>/dev/null | grep "STREAM" | awk '{print $1}' | grep -E "^[0-9a-fA-F:]+$" | sort -u)
     echo "$ipv4s $ipv6s"
 }
 
@@ -168,24 +178,36 @@ if [ ! -f /etc/trackers ]; then
 fi
 
 # Process each entry in the trackers file
-while IFS= read -r entry; do
+while IFS= read -r line; do
     # Skip empty lines and comments
-    if [ -z "$entry" ] || [[ "$entry" == \#* ]]; then
+    if [ -z "$line" ] || [[ "$line" == \#* ]]; then
+        continue
+    fi
+    
+    # Extract domain from line (format: "0.0.0.0 domain.com")
+    domain=$(echo "$line" | awk '{print $2}')
+    
+    if [ -z "$domain" ]; then
         continue
     fi
     
     # Check if it's an IPv4 address
-    if [[ "$entry" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        block_ip "$entry"
+    if [[ "$domain" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        block_ip "$domain"
     # Check if it's an IPv6 address
-    elif [[ "$entry" =~ ^[0-9a-fA-F:]+$ ]]; then
-        block_ip "$entry"
+    elif [[ "$domain" =~ ^[0-9a-fA-F:]+$ ]]; then
+        block_ip "$domain"
     else
         # It's a domain name, resolve it
-        echo "Resolving domain: $entry"
-        ips=$(resolve_domain "$entry")
+        echo "Resolving domain: $domain"
+        ips=$(resolve_domain "$domain")
         if [ -z "$ips" ]; then
-            echo "Failed to resolve $entry to any IP addresses. Skipping."
+            echo "Failed to resolve $domain to any IP addresses. Using dnsmasq fallback."
+            # Use dnsmasq for domain blocking (if installed)
+            if command -v dnsmasq &> /dev/null; then
+                echo "address=/$domain/0.0.0.0" >> /etc/dnsmasq.d/blocked_domains.conf
+                echo "Added $domain to dnsmasq blocklist."
+            fi
             continue
         fi
         
@@ -200,6 +222,12 @@ done < /etc/trackers
 iptables-save > /etc/iptables/rules.v4
 if command -v ip6tables &> /dev/null; then
     ip6tables-save > /etc/iptables/rules.v6
+fi
+
+# Restart dnsmasq if updated
+if [ -f /etc/dnsmasq.d/blocked_domains.conf ]; then
+    systemctl restart dnsmasq 2>/dev/null || echo "dnsmasq restart failed, but IP blocking should still work."
+    echo "DNS-based blocking updated."
 fi
 
 echo "Blocking public trackers updated successfully."
