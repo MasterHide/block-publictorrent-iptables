@@ -64,6 +64,7 @@ ESSENTIAL_FILES=(
     "https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/bmenu.sh"
     "https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/hostsTrackers"
     "https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/bt.sh"
+    "https://raw.githubusercontent.com/MasterHide/block-publictorrent-iptables/main/cdnTrackers"
 )
 for file in "${ESSENTIAL_FILES[@]}"; do
     download_file_to_all_paths "$file"
@@ -78,11 +79,10 @@ if [ -f "/root/hostsTrackers" ]; then
     mv /root/hostsTrackers /etc/trackers || print_error "Failed to move hostsTrackers."
     print_success "Moved hostsTrackers to /etc/trackers for persistent blocking."
 fi
-# Create a domains-only file for IP resolution
-if [ -f "/etc/trackers" ]; then
-    # Extract only domain names (second field) and skip empty lines and comments
-    grep -v '^#' /etc/trackers | grep -v '^$' | awk '{print $2}' > /etc/domains-only || print_error "Failed to create domains-only file."
-    print_success "Created domains-only file for IP resolution."
+# Move cdnTrackers to a persistent location (check if file exists in any of the paths)
+if [ -f "/root/cdnTrackers" ]; then
+    mv /root/cdnTrackers /etc/cdnTrackers || print_error "Failed to move cdnTrackers."
+    print_success "Moved cdnTrackers to /etc/cdnTrackers for persistent blocking."
 fi
 # Update /etc/hosts with tracker domains (if /etc/trackers exists)
 if [ -f "/etc/trackers" ]; then
@@ -109,6 +109,100 @@ if [ -f "/etc/trackers" ]; then
     print_success "Updated /etc/hosts with tracker domains."
 else
     print_error "/etc/trackers does not exist. Exiting."
+fi
+# Process CDN trackers with IPv4/IPv6 resolution
+if [ -f "/etc/cdnTrackers" ]; then
+    print_success "Processing CDN trackers with IPv4/IPv6 resolution..."
+    
+    # Function to resolve domain to IPs
+    resolve_domain() {
+        local domain=$1
+        local ipv4s=$(getent ahosts "$domain" 2>/dev/null | grep "STREAM" | awk '{print $1}' | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$" | sort -u)
+        local ipv6s=$(getent ahosts "$domain" 2>/dev/null | grep "STREAM" | awk '{print $1}' | grep -E "^[0-9a-fA-F:]+$" | sort -u)
+        echo "$ipv4s $ipv6s"
+    }
+    
+    # Function to block an IP
+    block_ip() {
+        local ip=$1
+        local is_ipv6=false
+        
+        # Check if it's an IPv6 address
+        if [[ "$ip" =~ ^[0-9a-fA-F:]+$ ]]; then
+            is_ipv6=true
+        fi
+        
+        # Remove existing rules first to avoid duplicates
+        if [ "$is_ipv6" = true ]; then
+            if [ "$IP6TABLES_AVAILABLE" = true ]; then
+                ip6tables -D INPUT -d "$ip" -j DROP 2>/dev/null
+                ip6tables -D FORWARD -d "$ip" -j DROP 2>/dev/null
+                ip6tables -D OUTPUT -d "$ip" -j DROP 2>/dev/null
+                # Check if DOCKER-USER chain exists
+                if ip6tables -n -L DOCKER-USER >/dev/null 2>&1; then
+                    ip6tables -D DOCKER-USER -d "$ip" -j DROP 2>/dev/null
+                fi
+                # Add the new rules
+                ip6tables -A INPUT -d "$ip" -j DROP
+                ip6tables -A FORWARD -d "$ip" -j DROP
+                ip6tables -A OUTPUT -d "$ip" -j DROP
+                if ip6tables -n -L DOCKER-USER >/dev/null 2>&1; then
+                    ip6tables -I DOCKER-USER -d "$ip" -j DROP
+                fi
+                print_success "Blocked IPv6: $ip"
+            fi
+        else
+            # It's an IPv4 address
+            iptables -D INPUT -d "$ip" -j DROP 2>/dev/null
+            iptables -D FORWARD -d "$ip" -j DROP 2>/dev/null
+            iptables -D OUTPUT -d "$ip" -j DROP 2>/dev/null
+            # Check if DOCKER-USER chain exists
+            if iptables -n -L DOCKER-USER >/dev/null 2>&1; then
+                iptables -D DOCKER-USER -d "$ip" -j DROP 2>/dev/null
+            fi
+            # Add the new rules
+            iptables -A INPUT -d "$ip" -j DROP
+            iptables -A FORWARD -d "$ip" -j DROP
+            iptables -A OUTPUT -d "$ip" -j DROP
+            if iptables -n -L DOCKER-USER >/dev/null 2>&1; then
+                iptables -I DOCKER-USER -d "$ip" -j DROP
+            fi
+            print_success "Blocked IPv4: $ip"
+        fi
+    }
+    
+    # Process each entry in the cdnTrackers file
+    while IFS= read -r line; do
+        # Skip empty lines and comments
+        if [ -z "$line" ] || [[ "$line" == \#* ]]; then
+            continue
+        fi
+        
+        # Extract domain from line (format: "0.0.0.0 domain.com")
+        domain=$(echo "$line" | awk '{print $2}')
+        
+        if [ -z "$domain" ]; then
+            continue
+        fi
+        
+        # It's a CDN domain, resolve it to get the actual server IP
+        print_warning "Resolving CDN domain: $domain"
+        ips=$(resolve_domain "$domain")
+        if [ -z "$ips" ]; then
+            print_error "Failed to resolve $domain to any IP addresses. Skipping."
+            continue
+        fi
+        
+        # Block each resolved IP
+        for ip in $ips; do
+            block_ip "$ip"
+        done
+        
+        # Also add to /etc/hosts for DNS-level blocking
+        echo "# Added by torrent block script (CDN) $line" >> /etc/hosts
+    done < /etc/cdnTrackers
+    
+    print_success "CDN trackers processed successfully."
 fi
 # Create cron job for blocking public trackers
 CRON_FILE="/etc/cron.daily/denypublic"
@@ -171,42 +265,54 @@ block_ip() {
     fi
 }
 
-# Main processing
-if [ ! -f /etc/trackers ]; then
-    echo "No /etc/trackers file found. Exiting."
-    exit 1
-fi
-
-# Process each entry in the trackers file
-while IFS= read -r line; do
-    # Skip empty lines and comments
-    if [ -z "$line" ] || [[ "$line" == \#* ]]; then
-        continue
-    fi
-    
-    # Extract domain from line (format: "0.0.0.0 domain.com")
-    domain=$(echo "$line" | awk '{print $2}')
-    
-    if [ -z "$domain" ]; then
-        continue
-    fi
-    
-    # Check if it's an IPv4 address
-    if [[ "$domain" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        block_ip "$domain"
-    # Check if it's an IPv6 address
-    elif [[ "$domain" =~ ^[0-9a-fA-F:]+$ ]]; then
-        block_ip "$domain"
-    else
-        # It's a domain name, resolve it
-        echo "Resolving domain: $domain"
-        ips=$(resolve_domain "$domain")
-        if [ -z "$ips" ]; then
-            echo "Failed to resolve $domain to any IP addresses. Using dnsmasq fallback."
+# Process non-proxy domains in /etc/trackers using original method
+if [ -f /etc/trackers ]; then
+    echo "Processing non-proxy domains in /etc/trackers..."
+    IFS=$'\n'
+    IPTABLES_CMD=$(which iptables)
+    TRACKER_IPS=$(awk '{print $1}' /etc/trackers | sort -u)
+    for fn in $TRACKER_IPS; do
+        # Block only valid IPv4/IPv6 addresses
+        if [[ "$fn" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ || "$fn" =~ ^[a-fA-F0-9:]+$ ]]; then
+            $IPTABLES_CMD -D INPUT -d $fn -j DROP 2>/dev/null
+            $IPTABLES_CMD -D FORWARD -d $fn -j DROP 2>/dev/null
+            $IPTABLES_CMD -D OUTPUT -d $fn -j DROP 2>/dev/null
+            $IPTABLES_CMD -A INPUT -d $fn -j DROP
+            $IPTABLES_CMD -A FORWARD -d $fn -j DROP
+            $IPTABLES_CMD -A OUTPUT -d $fn -j DROP
+        else
             # Use dnsmasq for domain blocking (if installed)
             if command -v dnsmasq &> /dev/null; then
+                echo "address=/$fn/0.0.0.0" >> /etc/dnsmasq.d/blocked_domains.conf
+            fi
+        fi
+    done
+fi
+
+# Process proxy domains in /etc/cdnTrackers using IP resolution
+if [ -f /etc/cdnTrackers ]; then
+    echo "Processing proxy domains in /etc/cdnTrackers..."
+    while IFS= read -r line; do
+        # Skip empty lines and comments
+        if [ -z "$line" ] || [[ "$line" == \#* ]]; then
+            continue
+        fi
+        
+        # Extract domain from line (format: "0.0.0.0 domain.com")
+        domain=$(echo "$line" | awk '{print $2}')
+        
+        if [ -z "$domain" ]; then
+            continue
+        fi
+        
+        # It's a CDN domain, resolve it to get the actual server IP
+        echo "Resolving CDN domain: $domain"
+        ips=$(resolve_domain "$domain")
+        if [ -z "$ips" ]; then
+            echo "Failed to resolve $domain to any IP addresses. Using fallback method."
+            # Fallback: use dnsmasq for domain blocking
+            if command -v dnsmasq &> /dev/null; then
                 echo "address=/$domain/0.0.0.0" >> /etc/dnsmasq.d/blocked_domains.conf
-                echo "Added $domain to dnsmasq blocklist."
             fi
             continue
         fi
@@ -215,8 +321,8 @@ while IFS= read -r line; do
         for ip in $ips; do
             block_ip "$ip"
         done
-    fi
-done < /etc/trackers
+    done < /etc/cdnTrackers
+fi
 
 # Save iptables rules
 iptables-save > /etc/iptables/rules.v4
